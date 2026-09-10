@@ -105,8 +105,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* The rank badge's typeface is part of its design and never follows the
+     user's chosen Design font — pin it to Inter, overriding the family the
+     .widget root sets inline. Weight stays fixed too (see below). */
+  font-family: 'Inter', sans-serif;
   font-size: 22px;
-  font-weight: var(--w-weight, 700);
+  font-weight: 700;
   font-style: italic;
   line-height: 1;
   white-space: nowrap;
