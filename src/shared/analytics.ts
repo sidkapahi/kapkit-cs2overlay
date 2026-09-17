@@ -39,6 +39,14 @@ function deriveUiHost(apiHost: string): string | undefined {
 
 const POSTHOG_UI_HOST = deriveUiHost(POSTHOG_HOST);
 
+// Namespace every custom event we send with this prefix, so this app's events
+// group together and don't collide with other apps that share the same PostHog
+// project (e.g. the `crtsim_` events). Applied centrally in trackEvent so call
+// sites keep their short, readable names and no event can be sent unprefixed.
+// PostHog's own automatic events ($pageview, $web_vitals, $opt_in, …) are sent
+// by posthog-js and are intentionally left untouched.
+const EVENT_PREFIX = "cs2overlay_";
+
 let started = false;
 
 // Cookie-based, but starts OPTED OUT — nothing is captured until the visitor
@@ -67,7 +75,7 @@ export function initAnalytics() {
 export function trackEvent(event: string, props?: Props) {
   if (!ENABLED || !started) return;
   try {
-    posthog.capture(event, props);
+    posthog.capture(`${EVENT_PREFIX}${event}`, props);
   } catch {
     // analytics must never break the app
   }
