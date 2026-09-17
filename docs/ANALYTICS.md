@@ -14,10 +14,16 @@ surfaces:
 
 Two kinds of events show up in PostHog:
 
-- **`snake_case`** names → **our custom events** (listed below).
+- **`cs2overlay_`-prefixed** names → **our custom events** (listed below). Every
+  event this app sends is namespaced with the `cs2overlay_` prefix so it groups
+  together and never collides with other apps that share the same PostHog project.
+  The prefix is applied centrally in
+  [`analytics.ts`](../src/shared/analytics.ts) /
+  [`analyticsOverlay.ts`](../src/shared/analyticsOverlay.ts), so the event names
+  below are the full names as they appear in PostHog.
 - **`$`-prefixed** names (e.g. `$pageview`, `$web_vitals`) → **PostHog's automatic
-  events**. We didn't write these; PostHog's library sends them. See
-  [PostHog automatic events](#posthog-automatic-events).
+  events**. We didn't write these; PostHog's library sends them (and it does not
+  apply our prefix). See [PostHog automatic events](#posthog-automatic-events).
 
 Nothing is sent with the Steam ID. The live **channel** (a public Twitch,
 YouTube, or Kick handle) is the only identifying value we attach anywhere.
@@ -28,20 +34,20 @@ YouTube, or Kick handle) is the only identifying value we attach anywhere.
 
 | Event | Fires when | Properties |
 | --- | --- | --- |
-| `steam_id_entered` | A typed Steam ID / profile link successfully resolves | — |
-| `live_selected` | A valid live channel is entered (once per new channel) | `platform` — `twitch` \| `youtube` \| `kick`; `channel` — the public handle |
-| `social_click` | A header link is clicked | `target` — `github` \| `kofi` \| `twitch` |
-| `preview_error` | The live preview fails to load | `stage` — `resolve` \| `stats`; `reason` — see [reason codes](#error-reason-codes); `detail` — short PII-free error text; `provider` — `leetify` \| `faceit` |
-| `widget_url_copied` | "Copy URL" is clicked | the [settings properties](#settings-properties) |
-| `export_zip_downloaded` | "Export ZIP" is clicked | the [settings properties](#settings-properties) |
+| `cs2overlay_steam_id_entered` | A typed Steam ID / profile link successfully resolves | — |
+| `cs2overlay_live_selected` | A valid live channel is entered (once per new channel) | `platform` — `twitch` \| `youtube` \| `kick`; `channel` — the public handle |
+| `cs2overlay_social_click` | A header link is clicked | `target` — `github` \| `kofi` \| `twitch` |
+| `cs2overlay_preview_error` | The live preview fails to load | `stage` — `resolve` \| `stats`; `reason` — see [reason codes](#error-reason-codes); `detail` — short PII-free error text; `provider` — `leetify` \| `faceit` |
+| `cs2overlay_widget_url_copied` | "Copy URL" is clicked | the [settings properties](#settings-properties) |
+| `cs2overlay_export_zip_downloaded` | "Export ZIP" is clicked | the [settings properties](#settings-properties) |
 
 ## Overlay events (our own, cookieless)
 
 | Event | Fires when | Properties |
 | --- | --- | --- |
-| `overlay_active` | The overlay loads in OBS (once per load) | `live` — `true` if a live session is active; `platform` — `twitch` \| `youtube` \| `kick` \| `''` |
-| `live_session_started` | The stream goes live and a new W/L session begins (once per go-live; an OBS refresh doesn't re-count) | `platform` — the live platform |
-| `overlay_error` | A stats fetch fails **and a retry ~2s later also fails** — fires **once per outage episode**, not every poll | `reason` — see [reason codes](#error-reason-codes); `detail` — short PII-free error text (diagnoses the `other` bucket); `provider` — `leetify` \| `faceit` |
+| `cs2overlay_overlay_active` | The overlay loads in OBS (once per load) | `live` — `true` if a live session is active; `platform` — `twitch` \| `youtube` \| `kick` \| `''` |
+| `cs2overlay_live_session_started` | The stream goes live and a new W/L session begins (once per go-live; an OBS refresh doesn't re-count) | `platform` — the live platform |
+| `cs2overlay_overlay_error` | A stats fetch fails **and a retry ~2s later also fails** — fires **once per outage episode**, not every poll | `reason` — see [reason codes](#error-reason-codes); `detail` — short PII-free error text (diagnoses the `other` bucket); `provider` — `leetify` \| `faceit` |
 
 > The overlay is cookieless, so each load looks like a new anonymous visitor.
 > These are **counts**, not unique-user figures.
@@ -50,8 +56,8 @@ YouTube, or Kick handle) is the only identifying value we attach anywhere.
 
 ## Settings properties
 
-`widget_url_copied` and `export_zip_downloaded` describe the exact widget
-someone built:
+`cs2overlay_widget_url_copied` and `cs2overlay_export_zip_downloaded` describe the
+exact widget someone built:
 
 | Property | Meaning |
 | --- | --- |
@@ -70,7 +76,7 @@ someone built:
 
 ## Error reason codes
 
-Attached as `reason` on `preview_error` and `overlay_error`. Both events also
+Attached as `reason` on `cs2overlay_preview_error` and `cs2overlay_overlay_error`. Both events also
 carry a `detail` (a short, PII-free copy of the underlying error message) so an
 `other` — or a misclassified — failure is diagnosable instead of opaque.
 
@@ -162,4 +168,4 @@ remove the managed-proxy domain + CNAME.
 | [`src/customizer/customizer.ts`](../src/customizer/customizer.ts) | Fires the customizer events + the consent banner/modal |
 | [`src/widget/widget.ts`](../src/widget/widget.ts) | Fires the overlay events |
 
-_Last updated: 2026-09-01._
+_Last updated: 2026-09-17._
