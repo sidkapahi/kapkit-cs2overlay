@@ -11,8 +11,8 @@ body {
 /* ---- Widget shell -------------------------------------------------------- */
 .widget {
   background: #141414;
-  border-radius: 24px;
-  padding: 20px 36px;
+  border-radius: 16px;
+  padding: 20px 26px;
   display: inline-flex;
   flex-direction: column;
   gap: 14px;
@@ -22,7 +22,7 @@ body {
 .widget-main {
   display: flex;
   align-items: center;
-  gap: 35px;
+  gap: 38px;
 }
 
 /* ---- Identity: avatar + name + rating ----------------------------------- */
