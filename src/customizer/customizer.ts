@@ -1103,9 +1103,9 @@ function init() {
                   <label class="field-label" for="bg-hex">Background Color</label>
                   <div class="color-row">
                     <label class="swatch">
-                      <input type="color" id="bg-color" value="#242424" aria-label="Background color">
+                      <input type="color" id="bg-color" value="#141414" aria-label="Background color">
                     </label>
-                    <input type="text" id="bg-hex" class="field-input hex" value="#242424" spellcheck="false" aria-label="Background hex">
+                    <input type="text" id="bg-hex" class="field-input hex" value="#141414" spellcheck="false" aria-label="Background hex">
                   </div>
                 </div>
                 <div class="field field-opacity">

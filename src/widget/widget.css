@@ -10,7 +10,7 @@ body {
 
 /* ---- Widget shell -------------------------------------------------------- */
 .widget {
-  background: #242424;
+  background: #141414;
   border-radius: 16px;
   padding: 20px 26px;
   display: inline-flex;
@@ -160,17 +160,18 @@ body {
   justify-content: center;
   min-width: 60px;
   padding: 8px 14px;
-  border: 3px solid transparent;
-  border-radius: 12px;
+  border: 2px solid transparent;
+  border-radius: 8px;
   background: transparent;
   font-size: 20px;
   font-weight: var(--w-weight, 700);
   line-height: 1;
 }
 
-/* Outlined pills — coloured border and matching text, no fill (Figma 6:1265). */
-.wl-win  { border-color: #6fce72; color: #6fce72; }
-.wl-loss { border-color: #d45f5f; color: #d45f5f; }
+/* Filled pills — dark tinted fill, coloured border and matching text
+   (Figma 114:31 win / 114:33 loss). */
+.wl-win  { background: #082809; border-color: #23a827; color: #23a827; }
+.wl-loss { background: #3d0c0c; border-color: #ff3636; color: #ff3636; }
 
 /* ---- Stats -------------------------------------------------------------- */
 .stats {

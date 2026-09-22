@@ -43,7 +43,7 @@ export function badgeSvg(tier: RankTier): string {
 // widget's configurable background. Falls back to the default tone on a bad hex.
 function bgRgba(hex: string, opacity: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  const value = m ? m[1] : '242424';
+  const value = m ? m[1] : '141414';
   const r = parseInt(value.slice(0, 2), 16);
   const g = parseInt(value.slice(2, 4), 16);
   const b = parseInt(value.slice(4, 6), 16);
@@ -131,8 +131,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showWinLoss) {
     wlHtml = `
     <div class="wl">
-      <div class="wl-pill wl-win">W${data.wins}</div>
-      <div class="wl-pill wl-loss">L${data.losses}</div>
+      <div class="wl-pill wl-win">${data.wins}W</div>
+      <div class="wl-pill wl-loss">${data.losses}L</div>
     </div>`;
   }
 
