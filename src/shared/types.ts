@@ -161,7 +161,7 @@ export interface WidgetConfig {
   // Font weight applied to the widget's display text (100..900). 700 keeps the
   // original look; the stronger elements (rating, diff) render one step heavier.
   fontWeight: number;
-  bgColor: string; // hex, e.g. '#242424'
+  bgColor: string; // hex, e.g. '#141414'
   bgOpacity: number; // 0..100
 }
 
@@ -183,6 +183,6 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   refreshInterval: 60,
   font: 'Inter',
   fontWeight: 700,
-  bgColor: '#242424',
+  bgColor: '#141414',
   bgOpacity: 100,
 };
