@@ -164,8 +164,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 
   // Match-history strip: W/L/T letters most-recent → oldest, left to right.
   // recentGames is newest-first (both providers), so no reversal. When stats are
-  // hidden the row has more room, so the strip is capped at 5 and the top row
-  // spreads (rank ⇄ W/L); with stats on it shows up to matchCount.
+  // hidden the widget is narrower, so the strip is capped at 5; with stats on it
+  // shows up to matchCount.
   const noStatsWithHistory = !config.showStats && config.showMatchHistory;
   const historyCount = noStatsWithHistory ? Math.min(5, config.matchCount) : config.matchCount;
   let historyHtml = '';
@@ -192,8 +192,6 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // has-avatar controls left-slot spacing; in FACEIT the slot is always the dial.
     (isFaceit || config.showAvatar) ? 'has-avatar' : 'no-avatar',
     isChallenger ? 'is-challenger' : '',
-    // Spread the top row (rank ⇄ W/L) when stats are hidden but history is shown.
-    noStatsWithHistory ? 'layout-spread' : '',
   ]
     .filter(Boolean)
     .join(' ');
