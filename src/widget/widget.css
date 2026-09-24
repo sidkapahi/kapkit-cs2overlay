@@ -11,8 +11,8 @@ body {
 /* ---- Widget shell -------------------------------------------------------- */
 .widget {
   background: #141414;
-  border-radius: 16px;
-  padding: 20px 26px;
+  border-radius: 24px;
+  padding: 24px 36px;
   display: inline-flex;
   flex-direction: column;
   gap: 14px;
@@ -22,7 +22,7 @@ body {
 .widget-main {
   display: flex;
   align-items: center;
-  gap: 38px;
+  gap: 40px;
 }
 
 /* ---- Identity: avatar + name + rating ----------------------------------- */
@@ -154,12 +154,14 @@ body {
   flex-shrink: 0;
 }
 
+/* Fixed-size chips (Figma 128:451 / 128:453): 77×40 including the 2px border,
+   with the count centred, so the pill doesn't resize as the W/L numbers change. */
 .wl-pill {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
-  padding: 8px 14px;
+  width: 77px;
+  height: 40px;
   border: 2px solid transparent;
   border-radius: 8px;
   background: transparent;
@@ -176,7 +178,7 @@ body {
 /* ---- Stats -------------------------------------------------------------- */
 .stats {
   display: flex;
-  gap: 26px;
+  gap: 24px;
   flex-shrink: 0;
 }
 
@@ -303,14 +305,6 @@ body {
   color: #ffffff;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
-}
-
-/* No-stats + match-history layout (Figma 64:776): the top row keeps a natural
-   gap between the rank and the W/L pills rather than being forced to opposite
-   ends. The match-history strip below still spreads (its own justify-between),
-   so the widget sizes to the top row's width. */
-.widget.layout-spread .widget-main {
-  gap: 40px;
 }
 
 /* ---- Loading ------------------------------------------------------------ */
