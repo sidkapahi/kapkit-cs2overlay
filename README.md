@@ -125,7 +125,7 @@ To hand-craft the URL, the widget accepts:
 | `twitch`     | —       | Legacy Twitch login (still accepted; equivalent to `live=twitch:<login>`) |
 | `avatar`     | `1`     | Show avatar (`0` to hide)          |
 | `name`       | `1`     | Show player name                   |
-| `badge`      | `1`     | Show rank badge (`0` for plain)    |
+| `badge`      | `0`     | Show in-game styled rank badge (`1`) instead of the plain number |
 | `change`     | `1`     | Show rank-point change (+/-)       |
 | `stats`      | `1`     | Show WIN%, AIM, K/D                 |
 | `history`    | `1`     | Show W/L/T match history            |

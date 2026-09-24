@@ -173,7 +173,8 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   showAvatar: true,
   showFlag: true,
   showName: true,
-  showBadge: true,
+  // Plain rank-coloured rating by default; the in-game styled badge is opt-in.
+  showBadge: false,
   showChange: false,
   showWinLoss: true,
   showStats: true,
