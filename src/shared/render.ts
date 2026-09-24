@@ -1,7 +1,7 @@
 import type { PremierData } from './api';
 import { brandLogoSrc } from './brandLogo';
 import { defaultAvatarSrc } from './defaultAvatar';
-import { challengerColor, faceitDialSvg } from './faceitRanks';
+import { challengerColor, faceitDialSvg, faceitEloColor } from './faceitRanks';
 import { flagUrl } from './flags';
 import { fontStack } from './fonts';
 import { formatRating, getRankTier } from './ranks';
@@ -75,8 +75,10 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   const ratingText = formatRating(data.rating);
   let ratingHtml: string;
   if (isFaceit) {
-    // ELO is white for every level/rank (the rank colour lives in the dial).
-    ratingHtml = `<span class="rating-plain faceit-elo">${ratingText}</span>`;
+    // ELO takes the same colour as the dial: the level's tier colour, or the
+    // Challenger red / #1–#3 medal colour.
+    const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
+    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}">${ratingText}</span>`;
   } else {
     ratingHtml = config.showBadge
       ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text">${ratingText}</span></div>`

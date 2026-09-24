@@ -299,8 +299,9 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
-/* FACEIT ELO is white for every level/rank (the rank colour is carried by the
-   dial, not the number); tabular figures keep it steady as the number changes. */
+/* FACEIT ELO — coloured inline to match the dial (level tier colour, or the
+   Challenger colour; see faceitEloColor). White is only the fallback. Tabular
+   figures keep it steady as the number changes. */
 .faceit-elo {
   color: #ffffff;
   font-variant-numeric: tabular-nums;
