@@ -63,10 +63,11 @@ body {
   gap: 12px;
 }
 
-/* Plain (no-badge) rating — rank-coloured number */
+/* Plain (no-badge) rating — rank-coloured number. Also the FACEIT ELO. Always
+   ExtraBold (800), whatever weight is picked in Design. */
 .rating-plain {
   font-size: 30px;
-  font-weight: var(--w-weight-strong, 800);
+  font-weight: 800;
   line-height: 1;
   letter-spacing: -0.01em;
   white-space: nowrap;

@@ -200,8 +200,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 
   // Design overrides: configurable background tint/opacity, font family, and
   // weight. `--w-weight` drives the body/name text; `--w-weight-strong` is one
-  // step heavier for the rating/diff, so the default (700) reproduces the
-  // original 700/800 hierarchy exactly.
+  // step heavier for the rating diff. (The plain rating / FACEIT ELO is pinned
+  // to 800 in CSS and doesn't follow either.)
   const weight = Math.max(100, Math.min(900, config.fontWeight || 700));
   const weightStrong = Math.min(900, weight + 100);
   const rootStyle = `background: ${bgRgba(config.bgColor, config.bgOpacity)}; font-family: ${fontStack(
