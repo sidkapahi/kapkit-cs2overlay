@@ -41,6 +41,7 @@
 
   --bg-page-a: #090909;
   --bg-page-b: #161616;
+  --bg-page-dot: rgba(255, 255, 255, 0.035);
   --card: #191919;
   --card-border: #2b2b2b;
   --input-bg: #0f0f0f;
@@ -69,7 +70,11 @@
 
 body {
   min-height: 100vh;
-  background: linear-gradient(125deg, var(--bg-page-a) 0%, var(--bg-page-b) 100%);
+  /* Figma "Desktop - 11" (153:2647): faint 24px dot grid over the diagonal
+     page gradient. */
+  background:
+    radial-gradient(circle at center, var(--bg-page-dot) 2px, transparent 2.5px) 0 0 / 24px 24px,
+    linear-gradient(127deg, var(--bg-page-a) 0%, var(--bg-page-b) 100%);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-ui);
