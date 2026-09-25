@@ -1,8 +1,10 @@
 import {
+  CORNER_RADII,
   DEFAULT_CONFIG,
   DEFAULT_STATS_BY_PROVIDER,
   PROVIDER_STATS,
   STAT_MAX,
+  type CornerRadius,
   type LivePlatform,
   type Provider,
   type StatKey,
@@ -160,6 +162,9 @@ export function configToParams(config: WidgetConfig): URLSearchParams {
   if (config.bgOpacity !== DEFAULT_CONFIG.bgOpacity) {
     params.set('bgo', String(config.bgOpacity));
   }
+  if (config.cornerRadius !== DEFAULT_CONFIG.cornerRadius) {
+    params.set('radius', String(config.cornerRadius));
+  }
   return params;
 }
 
@@ -196,6 +201,7 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
   const bg = params.get('bg');
   const bgo = params.get('bgo');
   const fw = parseInt(params.get('fw') ?? '', 10);
+  const radius = parseInt(params.get('radius') ?? '', 10);
 
   // Live source: `live=<platform>:<channel>` on new URLs; fall back to the legacy
   // `twitch=<login>` param so overlay URLs shared before this change keep working.
@@ -229,5 +235,8 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
       Number.isFinite(fw) && fw >= 100 && fw <= 900 ? fw : DEFAULT_CONFIG.fontWeight,
     bgColor: bg ? `#${bg.replace(/^#/, '')}` : DEFAULT_CONFIG.bgColor,
     bgOpacity: bgo != null ? Math.max(0, Math.min(100, parseInt(bgo, 10) || 0)) : DEFAULT_CONFIG.bgOpacity,
+    cornerRadius: (CORNER_RADII as readonly number[]).includes(radius)
+      ? (radius as CornerRadius)
+      : DEFAULT_CONFIG.cornerRadius,
   };
 }

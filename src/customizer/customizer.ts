@@ -35,11 +35,13 @@ import {
 } from "../shared/socialLogos";
 import { parseAccountInput, type AccountInput } from "../shared/steamId";
 import {
+  CORNER_RADII,
   DEFAULT_CONFIG,
   DEFAULT_STATS_BY_PROVIDER,
   PROVIDER_STATS,
   STAT_LABELS,
   STAT_MAX,
+  type CornerRadius,
   type Provider,
   type StatKey,
   type WidgetConfig,
@@ -101,6 +103,7 @@ function configEventProps(
     showChange: config.showChange,
     matchCount: config.matchCount,
     bgOpacity: config.bgOpacity,
+    cornerRadius: config.cornerRadius,
     usesLive: Boolean(config.livePlatform),
     livePlatform: config.livePlatform,
   };
@@ -681,6 +684,26 @@ function bindBackground() {
   });
 }
 
+// ---- Corner radius segmented toggle --------------------------------------
+function syncCornerRadius() {
+  const row = document.getElementById("corner-radius")!;
+  for (const seg of row.querySelectorAll<HTMLButtonElement>(".seg")) {
+    seg.classList.toggle("selected", Number(seg.dataset.radius) === currentConfig.cornerRadius);
+  }
+}
+
+function bindCornerRadius() {
+  const row = document.getElementById("corner-radius")!;
+  row.addEventListener("click", (e) => {
+    const seg = (e.target as HTMLElement).closest<HTMLButtonElement>(".seg");
+    if (!seg) return;
+    currentConfig.cornerRadius = Number(seg.dataset.radius) as CornerRadius;
+    syncCornerRadius();
+    renderPreview();
+    updateGeneratedUrl();
+  });
+}
+
 // Pushes currentConfig into every control (used on init).
 function syncControlsFromConfig() {
   for (const [id, key] of Object.entries(checkboxMap)) {
@@ -715,6 +738,7 @@ function syncControlsFromConfig() {
     currentConfig.bgColor;
   (document.getElementById("bg-opacity") as HTMLInputElement).value =
     `${currentConfig.bgOpacity}%`;
+  syncCornerRadius();
 
   // Provider toggle + the provider-specific Design rows (Flag vs Avatar/Badge).
   syncProviderToggle();
@@ -753,6 +777,7 @@ function bindControls() {
   bindFont();
   bindWeight();
   bindBackground();
+  bindCornerRadius();
 
   // Outbound header links (GitHub / Ko-fi / Twitch). One delegated listener
   // reads data-link so a single social_click event, broken down by `target`,
@@ -1111,6 +1136,13 @@ function init() {
                 <div class="field field-opacity">
                   <label class="field-label" for="bg-opacity">Opacity</label>
                   <input type="text" id="bg-opacity" class="field-input opacity" value="100%" inputmode="numeric" aria-label="Background opacity percent">
+                </div>
+              </div>
+
+              <div class="field">
+                <span class="field-label" id="corner-radius-label">Corner Radius</span>
+                <div class="seg-row" id="corner-radius" role="group" aria-labelledby="corner-radius-label">
+                  ${CORNER_RADII.map((r) => `<button type="button" class="seg" data-radius="${r}">${r}</button>`).join("")}
                 </div>
               </div>
             </div>

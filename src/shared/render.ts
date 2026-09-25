@@ -199,6 +199,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // has-avatar controls left-slot spacing; in FACEIT the slot is always the dial.
     (isFaceit || config.showAvatar) ? 'has-avatar' : 'no-avatar',
     isChallenger ? 'is-challenger' : '',
+    // 100 is the fully rounded pill preset; the W/L chips round up with it.
+    config.cornerRadius === 100 ? 'radius-full' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -206,12 +208,15 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // Design overrides: configurable background tint/opacity, font family, and
   // weight. `--w-weight` drives the body/name text; `--w-weight-strong` is one
   // step heavier for the rating diff. (The plain rating / FACEIT ELO is pinned
-  // to 800 in CSS and doesn't follow either.)
+  // to 800 in CSS and doesn't follow either.) `--w-radius` is the corner radius;
+  // the 100 preset is a full pill, so it's capped by the widget's height.
   const weight = Math.max(100, Math.min(900, config.fontWeight || 700));
   const weightStrong = Math.min(900, weight + 100);
   const rootStyle = `background: ${bgRgba(config.bgColor, config.bgOpacity)}; font-family: ${fontStack(
     config.font,
-  )}; --w-weight: ${weight}; --w-weight-strong: ${weightStrong};`;
+  )}; --w-weight: ${weight}; --w-weight-strong: ${weightStrong}; --w-radius: ${
+    config.cornerRadius === 100 ? 9999 : config.cornerRadius
+  }px;`;
 
   return `
     <div class="widget ${modifiers}" style="${rootStyle}">

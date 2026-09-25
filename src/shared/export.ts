@@ -123,6 +123,9 @@ function bundleJs(base: string): string {
     if (f.bgOpacity !== undefined && f.bgOpacity !== null && f.bgOpacity !== '') {
       p.set('bgo', String(f.bgOpacity));
     }
+    if (f.cornerRadius !== undefined && f.cornerRadius !== null && f.cornerRadius !== '') {
+      p.set('radius', String(f.cornerRadius));
+    }
     return BASE + '?' + p.toString();
   }
 
@@ -239,6 +242,13 @@ function bundleFields(config: WidgetConfig): string {
       min: 0,
       max: 100,
       step: 1,
+      group: 'Design',
+    },
+    cornerRadius: {
+      type: 'dropdown',
+      label: 'Corner radius',
+      value: String(config.cornerRadius),
+      options: { '0': '0', '24': '24', '32': '32', '100': '100' },
       group: 'Design',
     },
     matchCount: {
