@@ -140,8 +140,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 
   // Stats block: the user-picked subset of K/D, average kills, aim rating, and
   // win rate over the tracked matches (order follows config.stats). K/D is
-  // truncated to 2 decimals (1.158 → 1.15); everything else to whole numbers
-  // (18.9 → 18).
+  // rounded to 2 decimals (1.158 → 1.16); everything else is truncated to whole
+  // numbers (18.9 → 18).
   let statsHtml = '';
   if (config.showStats && config.stats.length > 0) {
     const withKd = recent.filter((g) => g.kills != null && g.deaths != null);
@@ -151,7 +151,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // error so e.g. 0.58 * 100 (= 57.99999999999999) still shows as 58.
     const whole = (n: number) => `${Math.trunc(n + 1e-9)}`;
     const statValues: Record<StatKey, string> = {
-      kd: totalDeaths > 0 ? (Math.trunc((totalKills / totalDeaths) * 100 + 1e-9) / 100).toFixed(2) : '—',
+      kd: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—',
       avg: withKd.length > 0 ? whole(totalKills / withKd.length) : '—',
       aim: whole(data.aimRating),
       // Percentages drop the "%" from the value — the "WIN %" / "HS %" label
