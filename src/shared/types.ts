@@ -168,9 +168,9 @@ export interface WidgetConfig {
   cornerRadius: CornerRadius;
 }
 
-// Corner radius presets offered in the customizer (Figma 154:2895 / 154:2926 /
-// 154:2957 / 154:2988). 24 is the original look.
-export const CORNER_RADII = [0, 24, 32, 100] as const;
+// Corner radius presets offered in the customizer (Figma 128:298 / 128:465 /
+// 128:267 / 128:329). 20 is the default.
+export const CORNER_RADII = [0, 20, 32, 100] as const;
 export type CornerRadius = (typeof CORNER_RADII)[number];
 
 export const DEFAULT_CONFIG: WidgetConfig = {
@@ -194,5 +194,5 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   fontWeight: 700,
   bgColor: '#141414',
   bgOpacity: 100,
-  cornerRadius: 24,
+  cornerRadius: 20,
 };
