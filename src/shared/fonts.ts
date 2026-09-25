@@ -151,12 +151,13 @@ function ensureWeightLink(family: string, weight: number, doc: Document): void {
 
 // Injects (once) the Google Fonts <link>s for a family so the chosen font is
 // actually available when the widget applies it. Always loads the 400/700 the
-// widget relies on, plus the specific `weight` the user picked (when it's
-// something else). Inter is bundled across weights via the base CSS import, so
-// it's skipped.
+// widget relies on and the 800 the rating/ELO is pinned to, plus the specific
+// `weight` the user picked (when it's something else). Inter is bundled across
+// weights via the base CSS import, so it's skipped.
 export function loadFont(family: string, weight?: number, doc: Document = document): void {
   if (!family || family === 'Inter') return;
   ensureWeightLink(family, 400, doc);
   ensureWeightLink(family, 700, doc);
-  if (weight && weight !== 400 && weight !== 700) ensureWeightLink(family, weight, doc);
+  ensureWeightLink(family, 800, doc);
+  if (weight && weight !== 400 && weight !== 700 && weight !== 800) ensureWeightLink(family, weight, doc);
 }

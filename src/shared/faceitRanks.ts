@@ -49,6 +49,33 @@ export function challengerColor(position: number | undefined): string {
   return (position != null && CHALLENGER_TOP[position]) || CHALLENGER_DEFAULT;
 }
 
+// Each level's tier colour, matching the colour baked into its dial art
+// (1 grey-white, 2–3 green, 4–7 yellow, 8–9 orange, 10 red).
+const LEVEL_COLORS: Record<number, string> = {
+  1: '#eeeeee',
+  2: '#1ce400',
+  3: '#1ce400',
+  4: '#ffc800',
+  5: '#ffc800',
+  6: '#ffc800',
+  7: '#ffc800',
+  8: '#ff6309',
+  9: '#ff6309',
+  10: '#fe1f00',
+};
+
+// The ELO text colour for a player: the Challenger colour (red, or the #1/#2/#3
+// medal colour) when they hold a leaderboard position, otherwise their level's
+// tier colour — so the number always matches the dial beside it.
+export function faceitEloColor(
+  level: number | undefined,
+  isChallenger: boolean,
+  position?: number,
+): string {
+  if (isChallenger) return challengerColor(position);
+  return LEVEL_COLORS[clampLevel(level)];
+}
+
 // Clamps any skill level to the valid 1–10 range so an unexpected value still
 // resolves to a dial rather than nothing.
 function clampLevel(level: number | undefined): number {

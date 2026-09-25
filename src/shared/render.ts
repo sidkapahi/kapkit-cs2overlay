@@ -1,7 +1,7 @@
 import type { PremierData } from './api';
 import { brandLogoSrc } from './brandLogo';
 import { defaultAvatarSrc } from './defaultAvatar';
-import { challengerColor, faceitDialSvg } from './faceitRanks';
+import { challengerColor, faceitDialSvg, faceitEloColor } from './faceitRanks';
 import { flagUrl } from './flags';
 import { fontStack } from './fonts';
 import { formatRating, getRankTier } from './ranks';
@@ -75,8 +75,10 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   const ratingText = formatRating(data.rating);
   let ratingHtml: string;
   if (isFaceit) {
-    // ELO is white for every level/rank (the rank colour lives in the dial).
-    ratingHtml = `<span class="rating-plain faceit-elo">${ratingText}</span>`;
+    // ELO takes the same colour as the dial: the level's tier colour, or the
+    // Challenger red / #1–#3 medal colour.
+    const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
+    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}">${ratingText}</span>`;
   } else {
     ratingHtml = config.showBadge
       ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text">${ratingText}</span></div>`
@@ -198,8 +200,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 
   // Design overrides: configurable background tint/opacity, font family, and
   // weight. `--w-weight` drives the body/name text; `--w-weight-strong` is one
-  // step heavier for the rating/diff, so the default (700) reproduces the
-  // original 700/800 hierarchy exactly.
+  // step heavier for the rating diff. (The plain rating / FACEIT ELO is pinned
+  // to 800 in CSS and doesn't follow either.)
   const weight = Math.max(100, Math.min(900, config.fontWeight || 700));
   const weightStrong = Math.min(900, weight + 100);
   const rootStyle = `background: ${bgRgba(config.bgColor, config.bgOpacity)}; font-family: ${fontStack(
