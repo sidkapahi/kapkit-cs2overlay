@@ -33,7 +33,7 @@ import {
   twitchMark,
   youTubeMark,
 } from "../shared/socialLogos";
-import { parseAccountInput, type AccountInput } from "../shared/steamId";
+import { detectLinkPlatform, parseAccountInput, type AccountInput } from "../shared/steamId";
 import {
   CORNER_RADII,
   DEFAULT_CONFIG,
@@ -215,6 +215,12 @@ function updateGeneratedUrl() {
 // link, a bare word, a FACEIT profile link, or a FACEIT nickname — into a
 // Steam64 ID (both providers key off it), then loads the preview.
 async function resolveAndLoad(rawInput: string) {
+  // A FACEIT link means a FACEIT overlay; a Steam link means Premier. Bare IDs
+  // and names don't say which, so they leave the toggle as-is. Done before
+  // taking a token so any preview reload setProvider kicks off is superseded.
+  const platform = detectLinkPlatform(rawInput);
+  if (platform) setProvider(platform === "faceit" ? "faceit" : "leetify", "auto");
+
   const token = ++resolveToken;
   const parsed = parseAccountInput(rawInput);
 
@@ -352,7 +358,8 @@ function debouncedLoadPreview(rawInput: string) {
 // Switches the active data source. The Steam identity and its input stay put —
 // only the stat trio/pills, the provider-specific Design rows, and the preview's
 // data source change. Re-fetches the current Steam ID against the new provider.
-function setProvider(provider: Provider) {
+// `source` is "auto" when a pasted FACEIT/Steam link flipped it.
+function setProvider(provider: Provider, source: "manual" | "auto" = "manual") {
   if (currentConfig.provider === provider) return;
   currentConfig.provider = provider;
   currentConfig.stats = [...DEFAULT_STATS_BY_PROVIDER[provider]];
@@ -366,7 +373,7 @@ function setProvider(provider: Provider) {
   if (currentConfig.steamId) loadPreview();
   else renderPreview();
   updateGeneratedUrl();
-  trackEvent("provider_selected", { provider });
+  trackEvent("provider_selected", { provider, source });
 }
 
 function syncProviderToggle() {
