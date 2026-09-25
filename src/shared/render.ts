@@ -140,21 +140,24 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 
   // Stats block: the user-picked subset of K/D, average kills, aim rating, and
   // win rate over the tracked matches (order follows config.stats). All values
-  // are rounded to whole numbers.
+  // are truncated to whole numbers (18.9 → 18).
   let statsHtml = '';
   if (config.showStats && config.stats.length > 0) {
     const withKd = recent.filter((g) => g.kills != null && g.deaths != null);
     const totalKills = withKd.reduce((s, g) => s + g.kills!, 0);
     const totalDeaths = withKd.reduce((s, g) => s + g.deaths!, 0);
+    // Drop the fractional part without rounding. The tiny epsilon absorbs float
+    // error so e.g. 0.58 * 100 (= 57.99999999999999) still shows as 58.
+    const whole = (n: number) => `${Math.trunc(n + 1e-9)}`;
     const statValues: Record<StatKey, string> = {
-      kd: totalDeaths > 0 ? `${Math.round(totalKills / totalDeaths)}` : '—',
-      avg: withKd.length > 0 ? `${Math.round(totalKills / withKd.length)}` : '—',
-      aim: `${Math.round(data.aimRating)}`,
+      kd: totalDeaths > 0 ? whole(totalKills / totalDeaths) : '—',
+      avg: withKd.length > 0 ? whole(totalKills / withKd.length) : '—',
+      aim: whole(data.aimRating),
       // Percentages drop the "%" from the value — the "WIN %" / "HS %" label
       // below the number already carries it.
-      winpct: `${Math.round((data.winRate ?? 0) * 100)}`,
-      adr: data.adr != null ? `${Math.round(data.adr)}` : '—',
-      hs: data.hsPct != null ? `${Math.round(data.hsPct * 100)}` : '—',
+      winpct: whole((data.winRate ?? 0) * 100),
+      adr: data.adr != null ? whole(data.adr) : '—',
+      hs: data.hsPct != null ? whole(data.hsPct * 100) : '—',
     };
     const cells = config.stats
       .map(
