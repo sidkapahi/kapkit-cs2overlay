@@ -11,7 +11,7 @@ body {
 /* ---- Widget shell -------------------------------------------------------- */
 .widget {
   background: #141414;
-  border-radius: var(--w-radius, 24px);
+  border-radius: var(--w-radius, 20px);
   padding: 24px 36px;
   display: inline-flex;
   flex-direction: column;
@@ -176,7 +176,7 @@ body {
 .wl-win  { background: #082809; border-color: #23a827; color: #23a827; }
 .wl-loss { background: #3d0c0c; border-color: #ff3636; color: #ff3636; }
 
-/* Pill-shaped overlay (corner radius 100, Figma 154:2988) rounds the chips up. */
+/* Pill-shaped overlay (corner radius 100, Figma 128:329) rounds the chips up. */
 .radius-full .wl-pill { border-radius: 12px; }
 
 /* ---- Stats -------------------------------------------------------------- */

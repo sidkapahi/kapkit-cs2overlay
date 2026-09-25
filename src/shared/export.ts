@@ -248,7 +248,7 @@ function bundleFields(config: WidgetConfig): string {
       type: 'dropdown',
       label: 'Corner radius',
       value: String(config.cornerRadius),
-      options: { '0': '0', '24': '24', '32': '32', '100': '100' },
+      options: { '0': '0', '20': '20', '32': '32', '100': '100' },
       group: 'Design',
     },
     matchCount: {
