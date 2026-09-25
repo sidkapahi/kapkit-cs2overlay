@@ -163,7 +163,15 @@ export interface WidgetConfig {
   fontWeight: number;
   bgColor: string; // hex, e.g. '#141414'
   bgOpacity: number; // 0..100
+  // Overlay corner radius in px — one of CORNER_RADII. 100 renders as a fully
+  // rounded pill (the W/L chips round up to match).
+  cornerRadius: CornerRadius;
 }
+
+// Corner radius presets offered in the customizer (Figma 154:2895 / 154:2926 /
+// 154:2957 / 154:2988). 24 is the original look.
+export const CORNER_RADII = [0, 24, 32, 100] as const;
+export type CornerRadius = (typeof CORNER_RADII)[number];
 
 export const DEFAULT_CONFIG: WidgetConfig = {
   provider: 'leetify',
@@ -186,4 +194,5 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   fontWeight: 700,
   bgColor: '#141414',
   bgOpacity: 100,
+  cornerRadius: 24,
 };
