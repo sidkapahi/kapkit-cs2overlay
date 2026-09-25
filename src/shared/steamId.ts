@@ -102,6 +102,16 @@ export function parseAccountInput(raw: string): AccountInput {
   return { kind: 'invalid' };
 }
 
+// Which platform a pasted profile link belongs to, or null when the input isn't
+// a link (a bare Steam64 ID or name says nothing about the overlay type). Used
+// by the customizer to flip the PREMIER | FACEIT toggle to match the link.
+export function detectLinkPlatform(raw: string): 'faceit' | 'steam' | null {
+  const input = raw.trim();
+  if (faceitNicknameFromUrl(input)) return 'faceit';
+  if (tryParseSteamPath(input)) return 'steam';
+  return null;
+}
+
 // Returns the path of a steamcommunity.com URL, or null if the input isn't one.
 // Accepts inputs without a scheme (e.g. a pasted "steamcommunity.com/id/foo").
 function tryParseSteamPath(input: string): string | null {
