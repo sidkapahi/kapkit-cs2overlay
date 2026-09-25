@@ -692,6 +692,54 @@ function syncCornerRadius() {
   }
 }
 
+// Elements whose corners change with the radius preset (the shell, and the W/L
+// chips that round up in the pill preset).
+const RADIUS_MORPH_SELECTORS = [".widget", ".wl-pill"];
+const RADIUS_MORPH_MS = 280;
+
+// The radius an element actually renders with. The pill preset is 9999px, which
+// the browser clamps to half the box — animating to/from 9999 would snap, so we
+// work in the clamped value.
+function effectiveRadius(el: HTMLElement): number {
+  const r = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+  return Math.min(r, el.offsetHeight / 2, el.offsetWidth / 2);
+}
+
+// The preview is re-rendered wholesale, so a CSS transition never sees the old
+// value. Carry it across instead: start each new element at the radius its
+// predecessor had, then transition to the new one.
+function morphPreviewRadius(update: () => void) {
+  const body = document.getElementById("preview-widget");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!body || reduced) return update();
+
+  const before = RADIUS_MORPH_SELECTORS.map((sel) =>
+    [...body.querySelectorAll<HTMLElement>(sel)].map(effectiveRadius),
+  );
+  update();
+
+  RADIUS_MORPH_SELECTORS.forEach((sel, i) => {
+    body.querySelectorAll<HTMLElement>(sel).forEach((el, j) => {
+      const from = before[i][j];
+      const to = effectiveRadius(el);
+      if (from === undefined || from === to) return;
+      el.style.borderRadius = `${from}px`;
+      void el.offsetWidth; // commit the start value before transitioning
+      el.style.transition = `border-radius ${RADIUS_MORPH_MS}ms cubic-bezier(0.2, 0, 0, 1)`;
+      el.style.borderRadius = `${to}px`;
+      // Hand control back to the stylesheet once settled.
+      // (transitionend bubbles, so ignore the chips' events reaching the shell.)
+      const settle = (e: TransitionEvent) => {
+        if (e.target !== el) return;
+        el.removeEventListener("transitionend", settle);
+        el.style.transition = "";
+        el.style.borderRadius = "";
+      };
+      el.addEventListener("transitionend", settle);
+    });
+  });
+}
+
 function bindCornerRadius() {
   const row = document.getElementById("corner-radius")!;
   row.addEventListener("click", (e) => {
@@ -699,7 +747,7 @@ function bindCornerRadius() {
     if (!seg) return;
     currentConfig.cornerRadius = Number(seg.dataset.radius) as CornerRadius;
     syncCornerRadius();
-    renderPreview();
+    morphPreviewRadius(renderPreview);
     updateGeneratedUrl();
   });
 }
