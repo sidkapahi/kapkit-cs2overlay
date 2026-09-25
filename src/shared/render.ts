@@ -139,20 +139,21 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   }
 
   // Stats block: the user-picked subset of K/D, average kills, aim rating, and
-  // win rate over the tracked matches (order follows config.stats).
+  // win rate over the tracked matches (order follows config.stats). All values
+  // are rounded to whole numbers.
   let statsHtml = '';
   if (config.showStats && config.stats.length > 0) {
     const withKd = recent.filter((g) => g.kills != null && g.deaths != null);
     const totalKills = withKd.reduce((s, g) => s + g.kills!, 0);
     const totalDeaths = withKd.reduce((s, g) => s + g.deaths!, 0);
     const statValues: Record<StatKey, string> = {
-      kd: totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : '—',
-      avg: withKd.length > 0 ? (totalKills / withKd.length).toFixed(1) : '—',
-      aim: data.aimRating.toFixed(1),
+      kd: totalDeaths > 0 ? `${Math.round(totalKills / totalDeaths)}` : '—',
+      avg: withKd.length > 0 ? `${Math.round(totalKills / withKd.length)}` : '—',
+      aim: `${Math.round(data.aimRating)}`,
       // Percentages drop the "%" from the value — the "WIN %" / "HS %" label
       // below the number already carries it.
       winpct: `${Math.round((data.winRate ?? 0) * 100)}`,
-      adr: data.adr != null ? data.adr.toFixed(1) : '—',
+      adr: data.adr != null ? `${Math.round(data.adr)}` : '—',
       hs: data.hsPct != null ? `${Math.round(data.hsPct * 100)}` : '—',
     };
     const cells = config.stats
