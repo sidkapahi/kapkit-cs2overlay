@@ -73,7 +73,7 @@ body {
   /* Figma "Desktop - 11" (153:2647): faint 24px dot grid over the diagonal
      page gradient. */
   background:
-    radial-gradient(circle at center, var(--bg-page-dot) 2px, transparent 2.5px) 0 0 / 24px 24px,
+    radial-gradient(circle at center, var(--bg-page-dot) 1px, transparent 1.5px) 0 0 / 24px 24px,
     linear-gradient(127deg, var(--bg-page-a) 0%, var(--bg-page-b) 100%);
   background-attachment: fixed;
   color: var(--text);
