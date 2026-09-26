@@ -16,9 +16,9 @@ npm run dev
 - Widget: `http://localhost:5173/widget/`
 
 `VITE_LEETIFY_KEY` is optional — without it, requests still work but hit
-Leetify's stricter unauthenticated rate limits. For a deployed site, set the
-same name as a **GitHub Actions repository secret** (Settings → Secrets and
-variables → Actions) so it's injected into the build.
+Leetify's stricter unauthenticated rate limits. For the deployed site, set
+`VITE_*` values as **build variables** on the `kapkit-cs2overlay` Worker in
+Cloudflare (Settings → Build → Variables), so they're injected into the build.
 
 ## Build
 
@@ -28,7 +28,9 @@ npm run preview   # preview the production build
 ```
 
 The output is a plain static site (the customizer and the widget), deployable to
-any static host — the project ships with GitHub Pages via a `CNAME`.
+any static host. The project deploys to Cloudflare Workers (static assets, see
+`wrangler.jsonc`) via Workers Builds: pushes to `main` go to production at
+`cs2widget.kapkit.ca`, and every other branch gets its own preview URL.
 
 ## Optional: avatars & custom profile links (Cloudflare Worker)
 
@@ -109,7 +111,7 @@ src/customizer/   Customizer UI (build & preview widget URLs)
 src/widget/       The overlay itself (rendered in OBS / browser source)
 src/shared/       API client, rank logic, rendering, session, export helpers
 worker/           Optional Cloudflare Workers (avatar + Twitch/YouTube/Kick live proxies)
-public/           Static assets (fonts, CNAME)
+public/           Static assets (fonts, images)
 docs/             This guide + the analytics event reference
 ```
 
