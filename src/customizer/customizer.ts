@@ -699,9 +699,8 @@ function syncCornerRadius() {
   }
 }
 
-// Elements whose corners change with the radius preset (the shell, and the W/L
-// chips that round up in the pill preset).
-const RADIUS_MORPH_SELECTORS = [".widget", ".wl-pill"];
+// Elements whose corners change with the radius preset.
+const RADIUS_MORPH_SELECTORS = [".widget"];
 const RADIUS_MORPH_MS = 280;
 
 // The radius an element actually renders with. The pill preset is 9999px, which

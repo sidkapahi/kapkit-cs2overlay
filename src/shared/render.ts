@@ -128,7 +128,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     nameHtml = `<div class="name">${flag}${esc(data.name)}</div>`;
   }
 
-  // W/L pills — total wins and losses across the returned recent matches.
+  // W/L record — total wins and losses across the returned recent matches.
   let wlHtml = '';
   if (config.showWinLoss) {
     wlHtml = `
@@ -199,7 +199,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // has-avatar controls left-slot spacing; in FACEIT the slot is always the dial.
     (isFaceit || config.showAvatar) ? 'has-avatar' : 'no-avatar',
     isChallenger ? 'is-challenger' : '',
-    // 100 is the fully rounded pill preset; the W/L chips round up with it.
+    // 100 is the fully rounded pill preset.
     config.cornerRadius === 100 ? 'radius-full' : '',
   ]
     .filter(Boolean)
@@ -231,8 +231,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
             </div>
           </div>
         </div>
-        ${wlHtml}
         ${statsHtml}
+        ${wlHtml}
       </div>
       ${historyHtml}
     </div>`;
