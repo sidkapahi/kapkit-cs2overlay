@@ -159,9 +159,12 @@ body {
   flex-shrink: 0;
 }
 
+/* Typeface and weight are part of the design (Inter Extra Bold) — pinned so
+   the user's Design font/weight don't override the .widget root's inline style. */
 .wl-pill {
+  font-family: 'Inter', sans-serif;
   font-size: 20px;
-  font-weight: var(--w-weight-strong, 800);
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
   text-align: right;
