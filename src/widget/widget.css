@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&family=JetBrains+Mono:wght@800&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -156,25 +156,30 @@ body {
   grid-template-columns: auto auto;
   align-content: center;
   justify-content: end;
-  column-gap: 2px;
+  column-gap: 6px;
   row-gap: 12px;
   flex-shrink: 0;
 }
 
 /* Each row hands its letter + count straight to the .wl grid. Typeface and
-   weight are part of the design (Inter Extra Bold) — pinned so the user's
-   Design font/weight don't override the .widget root's inline style. */
+   weight are part of the design (JetBrains Mono ExtraBold) — pinned so the
+   user's Design font/weight don't override the .widget root's inline style. */
 .wl-pill {
   display: contents;
-  font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
 }
 
-.wl-letter { justify-self: start; }
-.wl-count  { justify-self: end; }
+/* The letter sits in the design's 22px column, right-aligned; the mono W and
+   L are the same width, so they still line up above/below each other. */
+.wl-letter {
+  min-width: 22px;
+  text-align: right;
+}
+.wl-count { justify-self: end; }
 
 .wl-win  { color: #23a827; }
 .wl-loss { color: #ff3636; }
