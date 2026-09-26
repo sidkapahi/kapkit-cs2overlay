@@ -8,5 +8,9 @@
   "assets": {
     // Vite's build output: the customizer at / and the OBS overlay at /widget/.
     "directory": "./dist"
-  }
+  },
+  // Required by `wrangler preview`, which Workers Builds runs for every
+  // non-main branch. Empty because previews need no settings of their own
+  // (the site has no runtime vars or bindings; VITE_* values are build-time).
+  "previews": {}
 }
