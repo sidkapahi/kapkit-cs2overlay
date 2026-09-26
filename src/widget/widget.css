@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800&family=JetBrains+Mono:wght@800&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -148,27 +148,38 @@ body {
 .rating-diff.negative { color: #d45f5f; }
 
 /* ---- Win / loss record --------------------------------------------------- */
-/* Stacked, right-aligned counts in plain coloured text — no fill or border
-   (Figma 160:3625). */
+/* Stacked "W 12" / "L 12" rows in plain coloured text — no fill or border
+   (Figma 173:3663). The rows share a two-column grid so the W and L line up on
+   the left and the counts line up on the right, whatever their digit count. */
 .wl {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-content: center;
+  justify-content: end;
+  column-gap: 6px;
+  row-gap: 12px;
   flex-shrink: 0;
 }
 
-/* Typeface and weight are part of the design (Inter Extra Bold) — pinned so
-   the user's Design font/weight don't override the .widget root's inline style. */
+/* Each row hands its letter + count straight to the .wl grid. Typeface and
+   weight are part of the design (JetBrains Mono ExtraBold) — pinned so the
+   user's Design font/weight don't override the .widget root's inline style. */
 .wl-pill {
-  font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  display: contents;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* The letter sits in the design's 22px column, right-aligned; the mono W and
+   L are the same width, so they still line up above/below each other. */
+.wl-letter {
+  min-width: 22px;
   text-align: right;
 }
+.wl-count { justify-self: end; }
 
 .wl-win  { color: #23a827; }
 .wl-loss { color: #ff3636; }

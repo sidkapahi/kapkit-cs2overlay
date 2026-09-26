@@ -133,8 +133,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showWinLoss) {
     wlHtml = `
     <div class="wl">
-      <div class="wl-pill wl-win">${data.wins}W</div>
-      <div class="wl-pill wl-loss">${data.losses}L</div>
+      <div class="wl-pill wl-win"><span class="wl-letter">W</span><span class="wl-count">${data.wins}</span></div>
+      <div class="wl-pill wl-loss"><span class="wl-letter">L</span><span class="wl-count">${data.losses}</span></div>
     </div>`;
   }
 
