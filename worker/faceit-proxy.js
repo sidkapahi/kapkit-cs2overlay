@@ -199,12 +199,20 @@ async function resolveProfile(rawSteam64, history, env, cors) {
   // for Challenger) leaderboard position run in parallel — none depends on the
   // others once we have the id. The ELO change is summed over the same `history`
   // window the widget shows its recent matches for.
-  const [stats, recent, eloDiff, position] = await Promise.all([
+  const [stats, recent, eloHistory, position] = await Promise.all([
     fetchLifetime(playerId, auth),
     fetchRecentMatches(playerId, history, auth),
-    fetchRecentEloDiff(playerId, history),
+    fetchRecentElo(playerId, history),
     level === 10 && region ? fetchPosition(playerId, region, auth) : Promise.resolve(null),
   ]);
+  const eloDiff = eloHistory.diff;
+  // Attach each shown match's ELO change (e.g. +23 / -12) for the history
+  // strip's ELO mode. Matched by match id; null when the web stats API didn't
+  // cover that match, so the widget falls back to its W/L letter.
+  const matches = recent.matches.map((m) => ({
+    ...m,
+    eloChange: m.matchId != null && eloHistory.byMatch.has(m.matchId) ? eloHistory.byMatch.get(m.matchId) : null,
+  }));
 
   return json(
     {
@@ -230,7 +238,7 @@ async function resolveProfile(rawSteam64, history, env, cors) {
       losses: recent.losses,
       // Challenger leaderboard position (the `#528` pill), else null.
       position,
-      matches: recent.matches,
+      matches,
     },
     200,
     cors,
@@ -327,16 +335,19 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
   return { matches, wins, losses };
 }
 
-// Net ELO change across the last `window` matches, from FACEIT's public web
-// stats API. Each entry carries the ELO the player *held after* that match (a
-// cumulative value like 2450), so the sum of the per-match changes over the
-// window telescopes to `newest − (window-back)` — i.e. two cumulative values.
-// Entries are sorted newest-first by timestamp to be robust to ordering; one
-// extra match is pulled so the oldest in-window match still has a prior value to
-// diff against. Best-effort: any failure (endpoint down, shape change, too few
-// matches) returns 0, so the caller falls back to hiding the loss/gain pill
-// rather than surfacing an error.
-async function fetchRecentEloDiff(playerId, window) {
+// Recent ELO history from FACEIT's public web stats API. Each entry carries the
+// ELO the player *held after* that match (a cumulative value like 2450), so a
+// match's ELO change is its value minus the previous match's, and the net change
+// over the window telescopes to `newest − (window-back)`. Entries are sorted
+// newest-first by timestamp to be robust to ordering; one extra match is pulled
+// so the oldest in-window match still has a prior value to diff against.
+// Returns { diff, byMatch } — the net change over the window and a Map of
+// match id → that match's change. Best-effort: any failure (endpoint down, shape
+// change, too few matches) returns a 0 diff and an empty map, so the caller
+// falls back to hiding the loss/gain pill (and the ELO history chips fall back
+// to W/L) rather than surfacing an error.
+async function fetchRecentElo(playerId, window) {
+  const empty = { diff: 0, byMatch: new Map() };
   const want = Math.max(1, Math.min(WL_WINDOW, Math.trunc(window) || 1));
   // +1: summing N per-match changes needs the cumulative ELO from N+1 matches.
   const size = Math.min(WL_WINDOW, want + 1);
@@ -345,25 +356,30 @@ async function fetchRecentEloDiff(playerId, window) {
       `${FACEIT_WEB_STATS}/${encodeURIComponent(playerId)}/games/cs2?page=0&size=${size}`,
       { headers: { Accept: 'application/json' }, cf: { cacheTtl: 30, cacheEverything: true } },
     );
-    if (!res.ok) return 0;
+    if (!res.ok) return empty;
     const data = await res.json();
     const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-    const elos = items
+    const entries = items
       .map((m) => ({
         elo: num(m?.elo),
+        // `matchId` on the time-stats payload; `match_id` on older shapes.
+        id: typeof m?.matchId === 'string' ? m.matchId : typeof m?.match_id === 'string' ? m.match_id : null,
         // `date` (ms) on the time-stats payload; `created_at` on older shapes.
         t: num(m?.date) ?? num(m?.created_at) ?? 0,
       }))
       .filter((m) => m.elo != null)
-      .sort((a, b) => b.t - a.t)
-      .map((m) => m.elo);
-    if (elos.length < 2) return 0;
+      .sort((a, b) => b.t - a.t);
+    if (entries.length < 2) return empty;
+    const byMatch = new Map();
+    for (let k = 0; k < entries.length - 1; k++) {
+      if (entries[k].id) byMatch.set(entries[k].id, Math.round(entries[k].elo - entries[k + 1].elo));
+    }
     // Sum of the newest `n` per-match changes = elos[0] − elos[n]. Clamp `n` to
     // what we actually got so a short history still yields a partial-window sum.
-    const n = Math.min(want, elos.length - 1);
-    return Math.round(elos[0] - elos[n]);
+    const n = Math.min(want, entries.length - 1);
+    return { diff: Math.round(entries[0].elo - entries[n].elo), byMatch };
   } catch {
-    return 0;
+    return empty;
   }
 }
 

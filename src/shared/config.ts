@@ -146,6 +146,8 @@ export function configToParams(config: WidgetConfig): URLSearchParams {
   }
   // Match history defaults OFF now, so encode the ON case explicitly.
   if (config.showMatchHistory) params.set('history', '1');
+  // History chips default to W/L; the ELO mode is FACEIT-only.
+  if (config.provider === 'faceit' && config.historyMode === 'elo') params.set('hist', 'elo');
   if (config.matchCount !== DEFAULT_CONFIG.matchCount) {
     params.set('matchCount', String(config.matchCount));
   }
@@ -228,6 +230,7 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
     showStats,
     stats,
     showMatchHistory: params.get('history') === '1',
+    historyMode: params.get('hist') === 'elo' ? 'elo' : 'wl',
     matchCount: parseInt(params.get('matchCount') ?? String(DEFAULT_CONFIG.matchCount), 10),
     refreshInterval: parseInt(params.get('refresh') ?? String(DEFAULT_CONFIG.refreshInterval), 10),
     font: params.get('font') ?? DEFAULT_CONFIG.font,

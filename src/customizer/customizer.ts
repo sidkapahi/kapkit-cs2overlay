@@ -99,6 +99,7 @@ function configEventProps(
     stats: config.showStats ? config.stats.join(",") : "off",
     showBadge: config.showBadge,
     showMatchHistory: config.showMatchHistory,
+    historyMode: config.historyMode,
     showWinLoss: config.showWinLoss,
     showChange: config.showChange,
     matchCount: config.matchCount,
@@ -396,6 +397,31 @@ function syncProviderRows() {
   set("flag-row", !faceit);
   set("avatar-row", faceit);
   set("badge-row", faceit);
+  syncHistoryModeUi();
+}
+
+// ---- Match history mode (W/L letters vs per-match ELO) --------------------
+// FACEIT only — Premier has no per-match rating change to show — and only while
+// Match History is on.
+function syncHistoryModeUi() {
+  const row = document.getElementById("history-mode");
+  if (!row) return;
+  row.hidden = !(currentConfig.provider === "faceit" && currentConfig.showMatchHistory);
+  for (const seg of row.querySelectorAll<HTMLButtonElement>(".seg")) {
+    seg.classList.toggle("selected", seg.dataset.hist === currentConfig.historyMode);
+  }
+}
+
+function bindHistoryMode() {
+  document.getElementById("show-history")!.addEventListener("change", syncHistoryModeUi);
+  document.getElementById("history-mode")!.addEventListener("click", (e) => {
+    const seg = (e.target as HTMLElement).closest<HTMLButtonElement>(".seg");
+    if (!seg) return;
+    currentConfig.historyMode = seg.dataset.hist === "elo" ? "elo" : "wl";
+    syncHistoryModeUi();
+    renderPreview();
+    updateGeneratedUrl();
+  });
 }
 
 // Simple display toggles → config keys. Stats and win/loss gate nested controls,
@@ -828,6 +854,7 @@ function bindControls() {
 
   bindStats();
   bindWl();
+  bindHistoryMode();
   bindFont();
   bindWeight();
   bindBackground();
@@ -1228,7 +1255,13 @@ function init() {
                 <div class="pill-row" id="stats-pills">${statPillsHtml()}</div>
               </div>
 
-              <label class="check"><input type="checkbox" id="show-history"><span class="check-text">Match History</span></label>
+              <div class="check-group">
+                <label class="check"><input type="checkbox" id="show-history"><span class="check-text">Match History</span></label>
+                <div class="seg-row" id="history-mode" hidden>
+                  <button type="button" class="seg" data-hist="wl">WIN/LOSS</button>
+                  <button type="button" class="seg" data-hist="elo">ELO</button>
+                </div>
+              </div>
             </div>
           </section>
         </div>
