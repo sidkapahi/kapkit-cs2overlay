@@ -52,7 +52,8 @@ export interface LeetifyMatch {
   kills?: number;
   deaths?: number;
   // FACEIT only: the ELO gained/lost in this match (e.g. +23 / -12), from the
-  // proxy Worker. Undefined for Premier, or when FACEIT's web stats didn't cover it.
+  // proxy Worker's ELO tracker. Undefined for Premier, or for a match played
+  // before tracking started (the chip then shows its W/L letter).
   eloChange?: number;
 }
 

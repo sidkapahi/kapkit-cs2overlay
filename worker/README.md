@@ -306,7 +306,7 @@ GET /?steam64_id=76561198034202275&history=10
     "winRate": 0.61, "kd": 1.34, "adr": 92.1, "hs": 0.53,
     "position": 528,                       // Challenger rank, else null
     "matches": [
-      { "matchId": "…", "outcome": "win", "kills": 24, "deaths": 15, "adr": 98.2, "hs": 0.58 },
+      { "matchId": "…", "outcome": "win", "kills": 24, "deaths": 15, "adr": 98.2, "hs": 0.58, "eloChange": 23 },
       …
     ]
   }
@@ -314,11 +314,15 @@ GET /?steam64_id=76561198034202275&history=10
 
 `history` is optional (default 10, capped at 20). Lifetime fields the API
 doesn't expose come back `null`; a per-match stat that can't be fetched leaves
-that match's `kills`/`deaths` `null` but keeps its `outcome`. `eloDiff` is the
-net ELO change across the recent `history` window (the sum of the per-match ELO
-changes — the widget's TOTAL-mode loss/gain) — the Data API has no per-match ELO,
-so it's derived best-effort from FACEIT's public web stats API and comes back `0`
-when that can't be reached. A Steam account
+that match's `kills`/`deaths` `null` but keeps its `outcome`. `eloChange` is the
+ELO gained/lost in that match and `eloDiff` their sum across the window (the
+widget's TOTAL-mode loss/gain). FACEIT exposes no per-match ELO to servers (the
+Data API has none; faceit.com's internal stats API is behind a bot check and
+blocks cross-origin reads), so the Worker records it itself: each profile fetch
+saves the player's ELO and newest match id in the `ELO_HISTORY` KV namespace,
+and when exactly one new match appears its change is the ELO difference. Matches
+played before tracking started, or several finished between two fetches, come
+back `eloChange: null` (the widget shows W/L for those). A Steam account
 with no FACEIT CS2 profile returns `404`, an invalid `steam64_id` `400`, and a
 missing `FACEIT_API_KEY` `500`. Successful responses are cached ~30s; errors are
 never cached.
