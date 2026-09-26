@@ -9,6 +9,15 @@
     // Vite's build output: the customizer at / and the OBS overlay at /widget/.
     "directory": "./dist"
   },
+  // Workers Logs: keep request and console logs (viewable under the Worker's
+  // Observability tab in the Cloudflare dashboard).
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   // Required by `wrangler preview`, which Workers Builds runs for every
   // non-main branch. Empty because previews need no settings of their own
   // (the site has no runtime vars or bindings; VITE_* values are build-time).

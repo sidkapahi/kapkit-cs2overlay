@@ -7,3 +7,10 @@
 name = "youtube-live-proxy"
 main = "youtube-live-proxy.js"
 compatibility_date = "2024-11-01"
+
+# Workers Logs: keep request and console logs (Observability tab in the
+# Cloudflare dashboard) — useful for seeing why an upstream API call failed.
+[observability.logs]
+enabled = true
+invocation_logs = true
+persist = true
