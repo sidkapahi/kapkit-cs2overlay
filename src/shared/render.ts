@@ -231,8 +231,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
             </div>
           </div>
         </div>
-        ${wlHtml}
         ${statsHtml}
+        ${wlHtml}
       </div>
       ${historyHtml}
     </div>`;
