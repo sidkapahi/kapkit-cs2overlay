@@ -1,0 +1,68 @@
+name: Deploy proxy Workers
+
+# Redeploys the Cloudflare Worker proxies in worker/ whenever their code or
+# config changes on main. Only the Workers whose files changed are deployed;
+# running it by hand (Actions → Deploy proxy Workers → Run workflow) deploys all
+# of them. Secrets already stored on each Worker (API keys) are left untouched.
+#
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN (a token with Workers
+# Scripts: Edit) and CLOUDFLARE_ACCOUNT_ID.
+
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-workers
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Deploy changed Workers
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Deploy everything on a manual run, or when there's no usable
+          # previous commit to diff against (first push, force-push).
+          deploy_all=false
+          if [ "$EVENT" != "push" ] || [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+            || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            deploy_all=true
+            changed=""
+          else
+            changed=$(git diff --name-only "$BEFORE" "$AFTER" -- .)
+          fi
+          echo "Changed files:"; echo "${changed:-(deploying all)}"
+
+          for config in wrangler*.toml; do
+            main=$(sed -n 's/^main *= *"\(.*\)"/\1/p' "$config")
+            if $deploy_all || echo "$changed" | grep -qxF -e "worker/$config" -e "worker/$main"; then
+              echo "::group::Deploying $config ($main)"
+              npx --yes wrangler@4 deploy --config "$config"
+              echo "::endgroup::"
+            else
+              echo "Skipping $config (unchanged)"
+            fi
+          done
