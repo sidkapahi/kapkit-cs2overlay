@@ -34,8 +34,18 @@ const ALLOWED_ORIGINS = new Set([
   'https://levanisart.github.io',
   'https://sidkapahi.github.io',
   'https://cs2widget.kapkit.ca',
+  'https://kapkit-cs2overlay.sid-kapahi.workers.dev', // Cloudflare production URL
   'http://localhost:5173', // local dev (npm run dev)
 ]);
+
+// Cloudflare preview deployments of the site: every branch and every upload
+// gets its own <prefix>-kapkit-cs2overlay.sid-kapahi.workers.dev host. Only
+// Workers on this account can live under that subdomain.
+const PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+-kapkit-cs2overlay\.sid-kapahi\.workers\.dev$/;
+
+function isAllowedOrigin(origin) {
+  return ALLOWED_ORIGINS.has(origin) || PREVIEW_ORIGIN.test(origin);
+}
 
 const FACEIT_BASE = 'https://open.faceit.com/data/v4';
 
@@ -67,7 +77,7 @@ function corsHeaders(request) {
     Vary: 'Origin',
   };
   const origin = request.headers.get('Origin');
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
+  if (origin && isAllowedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
   }
   return headers;
