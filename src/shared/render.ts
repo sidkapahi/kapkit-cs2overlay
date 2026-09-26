@@ -175,11 +175,12 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // shows up to matchCount. FACEIT's ELO mode swaps the letters for outlined
   // chips carrying each match's ELO change (+23 / -12, Figma 157:3546); a match
   // without an ELO change keeps its letter inside the chip.
+  // The ELO chips are much wider than letters, so that mode always caps at 5.
+  const eloMode = isFaceit && config.historyMode === 'elo';
   const noStatsWithHistory = !config.showStats && config.showMatchHistory;
-  const historyCount = noStatsWithHistory ? Math.min(5, config.matchCount) : config.matchCount;
+  const historyCount = noStatsWithHistory || eloMode ? Math.min(5, config.matchCount) : config.matchCount;
   let historyHtml = '';
   if (config.showMatchHistory) {
-    const eloMode = isFaceit && config.historyMode === 'elo';
     const letters = data.recentGames
       .slice(0, historyCount)
       .map((g) => {
