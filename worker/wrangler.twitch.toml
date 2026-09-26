@@ -5,6 +5,6 @@
 #            wrangler secret put TWITCH_CLIENT_SECRET --config wrangler.twitch.toml
 #            (never commit the secrets)
 
-name = "cs2-twitch-live-proxy"
+name = "twitch-live-proxy"
 main = "twitch-live-proxy.js"
 compatibility_date = "2024-11-01"
