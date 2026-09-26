@@ -4,6 +4,6 @@
 # Add key:   wrangler secret put YOUTUBE_API_KEY --config wrangler.youtube.toml
 #            (never commit the key)
 
-name = "cs2-youtube-live-proxy"
+name = "youtube-live-proxy"
 main = "youtube-live-proxy.js"
 compatibility_date = "2024-11-01"

@@ -4,6 +4,6 @@
 # Add key:  wrangler secret put FACEIT_API_KEY --config wrangler.faceit.toml
 #           (never commit the key)
 
-name = "cs2-faceit-proxy"
+name = "faceit-proxy"
 main = "faceit-proxy.js"
 compatibility_date = "2024-11-01"
