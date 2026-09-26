@@ -148,8 +148,8 @@ body {
 .rating-diff.negative { color: #d45f5f; }
 
 /* ---- Win / loss record --------------------------------------------------- */
-/* Stacked, right-aligned counts in plain coloured text — no fill or border
-   (Figma 160:3625). */
+/* Stacked, right-aligned "W 12" / "L 12" rows in plain coloured text — no
+   fill or border (Figma 157:3532). */
 .wl {
   display: flex;
   flex-direction: column;
@@ -162,11 +162,22 @@ body {
 /* Typeface and weight are part of the design (Inter Extra Bold) — pinned so
    the user's Design font/weight don't override the .widget root's inline style. */
 .wl-pill {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
   font-family: 'Inter', sans-serif;
   font-size: 20px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+  text-align: right;
+}
+
+/* The letter sits in a fixed 22px column (the W's width) so the W and L line
+   up on their right edge above/below each other. */
+.wl-letter {
+  min-width: 22px;
   text-align: right;
 }
 
