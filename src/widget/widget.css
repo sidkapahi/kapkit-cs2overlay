@@ -147,37 +147,28 @@ body {
 .rating-diff.positive { color: #5dad60; }
 .rating-diff.negative { color: #d45f5f; }
 
-/* ---- Win / loss pills ---------------------------------------------------- */
+/* ---- Win / loss record --------------------------------------------------- */
+/* Stacked, right-aligned counts in plain coloured text — no fill or border
+   (Figma 160:3625). */
 .wl {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
   flex-shrink: 0;
 }
 
-/* Fixed-size chips (Figma 128:451 / 128:453): 77×40 including the 3px border,
-   with the count centred, so the pill doesn't resize as the W/L numbers change. */
 .wl-pill {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 77px;
-  height: 40px;
-  border: 3px solid transparent;
-  border-radius: 8px;
-  background: transparent;
   font-size: 20px;
-  font-weight: var(--w-weight, 700);
+  font-weight: var(--w-weight-strong, 800);
   line-height: 1;
+  white-space: nowrap;
+  text-align: right;
 }
 
-/* Filled pills — dark tinted fill, coloured border and matching text
-   (Figma 114:31 win / 114:33 loss). */
-.wl-win  { background: #082809; border-color: #23a827; color: #23a827; }
-.wl-loss { background: #3d0c0c; border-color: #ff3636; color: #ff3636; }
-
-/* Pill-shaped overlay (corner radius 100, Figma 128:329) rounds the chips up. */
-.radius-full .wl-pill { border-radius: 12px; }
+.wl-win  { color: #23a827; }
+.wl-loss { color: #ff3636; }
 
 /* ---- Stats -------------------------------------------------------------- */
 .stats {
