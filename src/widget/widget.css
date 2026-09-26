@@ -239,6 +239,26 @@ body {
 .hist-letters .l { color: #d45f5f; }
 .hist-letters .t { color: #f5c84b; }
 
+/* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
+   ELO change, tinted by the outcome. */
+.hist-letters.hist-elo {
+  gap: 8px;
+}
+.hist-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 10px;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+.hist-letters .hist-chip.w { color: #23a827; background: #082809; }
+.hist-letters .hist-chip.l { color: #ff3636; background: #3d0c0c; }
+.hist-letters .hist-chip.t { color: #f5c84b; background: #3a2f0c; }
+
 .hist-brand {
   display: flex;
   align-items: center;

@@ -172,22 +172,28 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // Match-history strip: W/L/T letters most-recent → oldest, left to right.
   // recentGames is newest-first (both providers), so no reversal. When stats are
   // hidden the widget is narrower, so the strip is capped at 5; with stats on it
-  // shows up to matchCount.
+  // shows up to matchCount. FACEIT's ELO mode swaps the letters for outlined
+  // chips carrying each match's ELO change (+23 / -12, Figma 157:3546); a match
+  // without an ELO change keeps its letter inside the chip.
   const noStatsWithHistory = !config.showStats && config.showMatchHistory;
   const historyCount = noStatsWithHistory ? Math.min(5, config.matchCount) : config.matchCount;
   let historyHtml = '';
   if (config.showMatchHistory) {
+    const eloMode = isFaceit && config.historyMode === 'elo';
     const letters = data.recentGames
       .slice(0, historyCount)
       .map((g) => {
         const cls = g.outcome === 'win' ? 'w' : g.outcome === 'tie' ? 't' : 'l';
         const lbl = g.outcome === 'win' ? 'W' : g.outcome === 'tie' ? 'T' : 'L';
-        return `<span class="${cls}">${lbl}</span>`;
+        if (!eloMode) return `<span class="${cls}">${lbl}</span>`;
+        const d = g.eloChange;
+        const text = d == null ? lbl : d > 0 ? `+${d}` : d < 0 ? `-${Math.abs(d)}` : '0';
+        return `<span class="hist-chip ${cls}">${text}</span>`;
       })
       .join('');
     historyHtml = `
       <div class="widget-history">
-        <div class="hist-letters">${letters}</div>
+        <div class="hist-letters${eloMode ? ' hist-elo' : ''}">${letters}</div>
         ${brandHtml()}
       </div>`;
   }

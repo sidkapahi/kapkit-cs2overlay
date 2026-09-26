@@ -51,6 +51,9 @@ export interface LeetifyMatch {
   // Undefined when that per-match lookup hasn't run or failed.
   kills?: number;
   deaths?: number;
+  // FACEIT only: the ELO gained/lost in this match (e.g. +23 / -12), from the
+  // proxy Worker. Undefined for Premier, or when FACEIT's web stats didn't cover it.
+  eloChange?: number;
 }
 
 // Kept as an alias so widget.ts's existing rendering code doesn't need renaming.
@@ -154,6 +157,9 @@ export interface WidgetConfig {
   // Which stats to show when showStats is on, in display order (max STAT_MAX).
   stats: StatKey[];
   showMatchHistory: boolean;
+  // FACEIT only: what each match-history chip shows — 'wl' the W/L letter,
+  // 'elo' the ELO gained/lost in that match (e.g. +23 / -12).
+  historyMode: HistoryMode;
   matchCount: number;
   refreshInterval: number;
   // Design options.
@@ -167,6 +173,8 @@ export interface WidgetConfig {
   // rounded pill (the W/L chips round up to match).
   cornerRadius: CornerRadius;
 }
+
+export type HistoryMode = 'wl' | 'elo';
 
 // Corner radius presets offered in the customizer (Figma 128:298 / 128:465 /
 // 128:267 / 128:329). 20 is the default.
@@ -188,6 +196,7 @@ export const DEFAULT_CONFIG: WidgetConfig = {
   showStats: true,
   stats: ['kd', 'avg', 'aim'],
   showMatchHistory: false,
+  historyMode: 'wl',
   matchCount: 10,
   refreshInterval: 60,
   font: 'Inter',

@@ -39,11 +39,13 @@ interface FaceitMatch {
   deaths: number | null;
   adr: number | null;
   hs: number | null;
+  // ELO gained/lost in this match (e.g. +23); null when the Worker couldn't derive it.
+  eloChange?: number | null;
 }
 
 // Builds a minimal LeetifyGame from a FACEIT match. `render.ts` reads only
-// `outcome`, `kills`, and `deaths` off recent games (for the history strip and
-// the K/D · AVG stat cells), so the other fields are filled with inert defaults
+// `outcome`, `kills`, `deaths`, and `eloChange` off recent games (for the history
+// strip and the K/D · AVG stat cells), so the other fields are filled with inert defaults
 // to satisfy the shared type without inventing data.
 function toGame(m: FaceitMatch): LeetifyGame {
   return {
@@ -62,6 +64,7 @@ function toGame(m: FaceitMatch): LeetifyGame {
     spray_accuracy: 0,
     kills: m.kills ?? undefined,
     deaths: m.deaths ?? undefined,
+    eloChange: typeof m.eloChange === 'number' ? m.eloChange : undefined,
   };
 }
 
