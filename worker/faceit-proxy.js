@@ -49,13 +49,20 @@ function isAllowedOrigin(origin) {
 
 const FACEIT_BASE = 'https://open.faceit.com/data/v4';
 
-// FACEIT's public web stats API (no key required). The Data API above exposes no
-// per-match ELO, but this endpoint returns each match with the ELO the player
-// held *after* it — so the net ELO across the recent window (the loss/gain the
-// widget shows in TOTAL mode) is the sum of those per-match changes. It's an
-// undocumented endpoint, so every use is best-effort: any failure yields a 0 diff
-// and the widget simply hides the pill, exactly as before this existed.
-const FACEIT_WEB_STATS = 'https://www.faceit.com/api/stats/v1/stats/time/users';
+// Per-match ELO changes. FACEIT exposes no per-match ELO to servers (the Data
+// API has none, and faceit.com's internal stats API sits behind a Cloudflare bot
+// check), so the Worker records it itself: it saves each player's ELO and newest
+// match id in KV (the ELO_HISTORY binding) whenever their profile is fetched, and
+// when exactly one new match appears, that match's change is the ELO difference.
+// See trackElo() below.
+//
+// How many recorded changes to keep per player — more than the history strip
+// ever shows, so older entries just fall off.
+const ELO_KEEP = 20;
+// A new match can show up in the history before FACEIT applies its ELO. The
+// tracker waits for the ELO to move, but gives up after this long (a match that
+// genuinely didn't change ELO, e.g. a cancelled one, shouldn't hang forever).
+const ELO_PENDING_MS = 30 * 60 * 1000;
 
 // How many recent matches to pull per-match stats for. The history strip shows
 // up to matchCount (default 10) and K/D is averaged over the same window, so 20
@@ -195,24 +202,26 @@ async function resolveProfile(rawSteam64, history, env, cors) {
     return json({ error: 'That FACEIT player has no CS2 data' }, 404, cors);
   }
 
-  // 2-5. Lifetime stats, recent history, the recent-window ELO change, and (only
-  // for Challenger) leaderboard position run in parallel — none depends on the
-  // others once we have the id. The ELO change is summed over the same `history`
-  // window the widget shows its recent matches for.
-  const [stats, recent, eloHistory, position] = await Promise.all([
+  // 2-5. Lifetime stats, recent history, and (only for Challenger) leaderboard
+  // position run in parallel — none depends on the others once we have the id.
+  const [stats, recent, position] = await Promise.all([
     fetchLifetime(playerId, auth),
     fetchRecentMatches(playerId, history, auth),
-    fetchRecentElo(playerId, history),
     level === 10 && region ? fetchPosition(playerId, region, auth) : Promise.resolve(null),
   ]);
-  const eloDiff = eloHistory.diff;
-  // Attach each shown match's ELO change (e.g. +23 / -12) for the history
-  // strip's ELO mode. Matched by match id; null when the web stats API didn't
-  // cover that match, so the widget falls back to its W/L letter.
-  const matches = recent.matches.map((m) => ({
-    ...m,
-    eloChange: m.matchId != null && eloHistory.byMatch.has(m.matchId) ? eloHistory.byMatch.get(m.matchId) : null,
-  }));
+
+  // 6. Record this poll's ELO and read back the per-match changes recorded so
+  // far (see trackElo). Attach each shown match's change (e.g. +23 / -12) for
+  // the history strip's ELO mode — null for a match played before tracking
+  // started, so the widget falls back to its W/L letter. The loss/gain pill is
+  // the sum of the recorded changes across the shown window.
+  const changes = await trackElo(env, playerId, num(cs2.faceit_elo), recent.ids);
+  let eloDiff = 0;
+  const matches = recent.matches.map((m) => {
+    const eloChange = m.matchId != null && Object.hasOwn(changes, m.matchId) ? changes[m.matchId] : null;
+    if (eloChange != null) eloDiff += eloChange;
+    return { ...m, eloChange };
+  });
 
   return json(
     {
@@ -223,8 +232,8 @@ async function resolveProfile(rawSteam64, history, env, cors) {
       elo: num(cs2.faceit_elo),
       level,
       region: typeof region === 'string' ? region : null,
-      // Net ELO change across the recent window (sum of the per-match changes,
-      // e.g. +140), 0 when it can't be derived. The widget shows this as the
+      // Net ELO change across the recent window (sum of the recorded per-match
+      // changes, e.g. +140), 0 when none have been recorded yet. The widget shows this as the
       // TOTAL-mode loss/gain; live-session mode replaces it client-side with the
       // ELO gained/lost across the stream.
       eloDiff,
@@ -274,7 +283,9 @@ async function fetchLifetime(playerId, auth) {
 // `statsCount` matches, which is the window the widget shows in its stats cells
 // and history strip. A finished match's stats never change, so they're cached
 // hard at the edge; a match whose stats can't be fetched still appears (with its
-// outcome) but without kills/deaths. Returns { matches, wins, losses }.
+// outcome) but without kills/deaths. Returns { matches, wins, losses, ids },
+// where `ids` is every match id in the history list, newest first (for the ELO
+// tracker to count how many matches are new since it last looked).
 async function fetchRecentMatches(playerId, statsCount, auth) {
   let items;
   try {
@@ -282,11 +293,11 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
       `${FACEIT_BASE}/players/${playerId}/history?game=cs2&offset=0&limit=${WL_WINDOW}`,
       auth,
     );
-    if (!res.ok) return { matches: [], wins: 0, losses: 0 };
+    if (!res.ok) return { matches: [], wins: 0, losses: 0, ids: [] };
     const data = await res.json();
     items = Array.isArray(data?.items) ? data.items : [];
   } catch {
-    return { matches: [], wins: 0, losses: 0 };
+    return { matches: [], wins: 0, losses: 0, ids: [] };
   }
 
   // TOTAL win/loss over the whole window — outcomes are in the list already.
@@ -332,55 +343,94 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
     }),
   );
 
-  return { matches, wins, losses };
+  const ids = items.map((item) => item?.match_id ?? null);
+  return { matches, wins, losses, ids };
 }
 
-// Recent ELO history from FACEIT's public web stats API. Each entry carries the
-// ELO the player *held after* that match (a cumulative value like 2450), so a
-// match's ELO change is its value minus the previous match's, and the net change
-// over the window telescopes to `newest − (window-back)`. Entries are sorted
-// newest-first by timestamp to be robust to ordering; one extra match is pulled
-// so the oldest in-window match still has a prior value to diff against.
-// Returns { diff, byMatch } — the net change over the window and a Map of
-// match id → that match's change. Best-effort: any failure (endpoint down, shape
-// change, too few matches) returns a 0 diff and an empty map, so the caller
-// falls back to hiding the loss/gain pill (and the ELO history chips fall back
-// to W/L) rather than surfacing an error.
-async function fetchRecentElo(playerId, window) {
-  const empty = { diff: 0, byMatch: new Map() };
-  const want = Math.max(1, Math.min(WL_WINDOW, Math.trunc(window) || 1));
-  // +1: summing N per-match changes needs the cumulative ELO from N+1 matches.
-  const size = Math.min(WL_WINDOW, want + 1);
+// Records a player's ELO against their newest match and returns the per-match
+// ELO changes recorded so far, as { [matchId]: change }.
+//
+// KV holds one record per player: the newest match id and ELO seen, plus the
+// recent changes. On each call:
+//   • Exactly one new match since last time → its change is the ELO difference.
+//     If FACEIT hasn't applied the ELO yet (unchanged), the match is marked
+//     pending and the change is recorded on a later call once the ELO moves.
+//   • Several new matches (nothing polled in between) → the total can't be
+//     split between them, so nothing is recorded; the tracker just re-baselines.
+//   • No new match but the ELO moved → FACEIT applied the ELO before the match
+//     reached the history list; the move is held as `early` and credited to the
+//     next single new match if it arrives within ELO_PENDING_MS.
+// Best-effort: without the KV binding, or on any KV error, it returns what it
+// can (or nothing) and the widget falls back to W/L letters.
+async function trackElo(env, playerId, elo, ids) {
+  const kv = env.ELO_HISTORY;
+  const newest = ids[0];
+  if (!kv || elo == null || !newest) return {};
+
+  const key = `elo:${playerId}`;
+  let rec = null;
   try {
-    const res = await fetch(
-      `${FACEIT_WEB_STATS}/${encodeURIComponent(playerId)}/games/cs2?page=0&size=${size}`,
-      { headers: { Accept: 'application/json' }, cf: { cacheTtl: 30, cacheEverything: true } },
-    );
-    if (!res.ok) return empty;
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-    const entries = items
-      .map((m) => ({
-        elo: num(m?.elo),
-        // `matchId` on the time-stats payload; `match_id` on older shapes.
-        id: typeof m?.matchId === 'string' ? m.matchId : typeof m?.match_id === 'string' ? m.match_id : null,
-        // `date` (ms) on the time-stats payload; `created_at` on older shapes.
-        t: num(m?.date) ?? num(m?.created_at) ?? 0,
-      }))
-      .filter((m) => m.elo != null)
-      .sort((a, b) => b.t - a.t);
-    if (entries.length < 2) return empty;
-    const byMatch = new Map();
-    for (let k = 0; k < entries.length - 1; k++) {
-      if (entries[k].id) byMatch.set(entries[k].id, Math.round(entries[k].elo - entries[k + 1].elo));
-    }
-    // Sum of the newest `n` per-match changes = elos[0] − elos[n]. Clamp `n` to
-    // what we actually got so a short history still yields a partial-window sum.
-    const n = Math.min(want, entries.length - 1);
-    return { diff: Math.round(entries[0].elo - entries[n].elo), byMatch };
+    rec = await kv.get(key, 'json');
   } catch {
-    return empty;
+    return {};
   }
+
+  const now = Date.now();
+  const changes = rec && rec.changes && typeof rec.changes === 'object' ? { ...rec.changes } : {};
+  const order = rec && Array.isArray(rec.order) ? [...rec.order] : [];
+  const record = (matchId, delta) => {
+    if (!Object.hasOwn(changes, matchId)) order.unshift(matchId);
+    changes[matchId] = Math.round(delta);
+  };
+
+  let next;
+  if (!rec || typeof rec.matchId !== 'string' || typeof rec.elo !== 'number') {
+    // First sighting: baseline only. Matches before this can't be known.
+    next = { matchId: newest, elo, pendingSince: null, early: null };
+  } else if (newest === rec.matchId) {
+    if (elo === rec.elo) {
+      // Nothing new. Drop a pending match that never moved the ELO.
+      const expired = rec.pendingSince != null && now - rec.pendingSince > ELO_PENDING_MS;
+      if (!expired) return changes;
+      next = { ...rec, pendingSince: null };
+    } else if (rec.pendingSince != null) {
+      // The pending match's ELO has now been applied.
+      record(newest, elo - rec.elo);
+      next = { matchId: newest, elo, pendingSince: null, early: null };
+    } else {
+      // ELO moved with no new match (yet). Hold the move for the next match.
+      next = { matchId: newest, elo, pendingSince: null, early: { delta: elo - rec.elo, at: now } };
+    }
+  } else {
+    const newCount = ids.indexOf(rec.matchId); // 1 = exactly one new match
+    const early = rec.early && now - rec.early.at <= ELO_PENDING_MS ? rec.early.delta : null;
+    if (newCount === 1 && rec.pendingSince == null) {
+      if (elo !== rec.elo) {
+        record(newest, elo - rec.elo + (early ?? 0));
+        next = { matchId: newest, elo, pendingSince: null, early: null };
+      } else if (early != null) {
+        // The ELO for this match was applied before it reached the history.
+        record(newest, early);
+        next = { matchId: newest, elo, pendingSince: null, early: null };
+      } else {
+        next = { matchId: newest, elo, pendingSince: now, early: null };
+      }
+    } else {
+      // Several new matches, an unresolved pending one, or the old id fell out
+      // of the history list: the change can't be attributed. Re-baseline.
+      next = { matchId: newest, elo, pendingSince: null, early: null };
+    }
+  }
+
+  // Keep only the most recent ELO_KEEP changes.
+  for (const old of order.splice(ELO_KEEP)) delete changes[old];
+
+  try {
+    await kv.put(key, JSON.stringify({ ...next, changes, order }));
+  } catch {
+    // A failed write just means this poll isn't remembered; the next one retries.
+  }
+  return changes;
 }
 
 // Determines win/loss/tie for a player from a history item. The item carries

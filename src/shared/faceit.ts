@@ -135,8 +135,8 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
     avatarUrl: p.avatarUrl ?? '',
     rating: p.elo ?? 0,
     // TOTAL-mode loss/gain: the net ELO across the recent window (the sum of the
-    // per-match ELO changes), derived by the Worker from FACEIT's web stats API
-    // (the Data API has no per-match ELO). 0 when it couldn't be derived, which
+    // per-match ELO changes the Worker has recorded — FACEIT exposes no per-match
+    // ELO, so the Worker tracks it in KV). 0 when none are recorded yet, which
     // hides the pill. Live-session mode overrides this client-side with the ELO
     // gained/lost across the stream (see widget.ts).
     ratingDiff: p.eloDiff ?? 0,
