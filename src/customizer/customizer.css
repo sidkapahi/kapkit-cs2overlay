@@ -42,13 +42,19 @@
   --bg-page-a: #090909;
   --bg-page-b: #161616;
   --bg-page-dot: rgba(255, 255, 255, 0.035);
-  --card: #191919;
+  /* Sidebar palette (Figma 156:3267 / 182:3). */
+  --card: #141414;
   --card-border: #2b2b2b;
-  --input-bg: #0f0f0f;
+  --input-bg: #202020;
+  --control: #2c2c2c;
+  --control-border: #3a3a3a;
+  --divider: #242424;
   --line: #676767;
   --pill-dark: #101411;
   --text: #f0f0f0;
   --text-dim: #a6a6a6;
+  --text-muted: #707070;
+  --icon-muted: #767676;
   --radius-card: 16px;
   --radius-field: 8px;
 
@@ -116,9 +122,15 @@ body {
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 40px;
   overflow-y: auto;
   max-height: calc(100vh - 48px);
+}
+
+/* Most rows here set display:flex/grid, which would otherwise beat the
+   [hidden] UA rule (provider-specific toggles, the advanced panel). */
+.setup [hidden] {
+  display: none !important;
 }
 
 .setup-head {
@@ -130,7 +142,7 @@ body {
 .setup-title {
   font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 30px;
+  font-size: 32px;
   letter-spacing: -0.02em;
   color: var(--text);
   line-height: 1.05;
@@ -139,7 +151,7 @@ body {
 .setup-sub {
   margin-top: 8px;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.3;
   color: var(--text-dim);
 }
 
@@ -166,8 +178,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 34px;
+  gap: 10px;
+  min-height: 36px;
   border: 1px solid var(--line);
   border-radius: var(--radius-field);
   text-decoration: none;
@@ -183,7 +195,7 @@ body {
 
 .link-repo {
   flex-shrink: 0;
-  padding: 0 12px;
+  padding: 8px 12px;
   background: var(--pill-dark);
   color: var(--text);
 }
@@ -235,194 +247,181 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-/* STEAM sits tighter to its single input than the DATA / DESIGN groups do to
-   their stacks, matching the design. */
-.group-steam {
-  gap: 12px;
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .group-label {
   font-family: var(--font-ui);
   font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.04em;
   color: var(--text);
 }
 
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.check-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Thin rule that breaks the setup column into its STEAM / DATA / DESIGN
-   categories. Sits as a flex child of .setup-body so it picks up the 32px
-   gap on each side. */
-.divider {
-  height: 1px;
-  width: 100%;
-  background: #373737;
-  border-radius: 10px;
-}
-
-/* ---- Inputs -------------------------------------------------------------- */
-.field-input {
-  width: 100%;
-  height: 42px;
-  background: var(--input-bg);
-  border: 1px solid transparent;
-  border-radius: var(--radius-field);
-  padding: 10px 16px;
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.field-input::placeholder {
-  color: #707070;
-}
-
-.field-input:focus {
-  border-color: var(--line);
-}
-
-/* ---- Live-session chip (collapsed state of the live-channel input) ------- */
-.live-chip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 42px;
-  background: var(--input-bg);
-  border: 1px solid transparent;
-  border-radius: var(--radius-field);
-  padding: 0 8px 0 14px;
-}
-
-.live-chip[hidden] {
-  display: none;
-}
-
-.live-chip-logo {
+/* Section reset arrow (DATA / BACKGROUND / TEXT headers). */
+.reset-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: var(--text);
-}
-
-.live-chip-logo svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.live-chip-name {
-  flex: 1;
-  min-width: 0;
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.live-chip-edit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  flex-shrink: 0;
-  background: transparent;
   border: 0;
-  border-radius: 8px;
-  color: #9a9a9a;
+  border-radius: 6px;
+  background: none;
+  color: var(--icon-muted);
   cursor: pointer;
   transition: color 0.12s, background 0.12s;
 }
-
-.live-chip-edit:hover {
+.reset-btn:hover {
   color: var(--text);
   background: rgba(255, 255, 255, 0.06);
 }
-
-.live-chip-edit svg {
-  width: 16px;
-  height: 16px;
+.reset-btn svg {
+  width: 15px;
+  height: 15px;
   display: block;
+}
+
+/* Thin rule between the sidebar's sections; picks up the body's 24px gap on
+   each side. */
+.divider {
+  height: 1px;
+  width: 100%;
+  background: var(--divider);
+  border-radius: 10px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
-.field-label {
+.field-tight {
+  gap: 8px;
+}
+
+/* Small medium-weight label for sub-options (Win/Loss, Stats, Corner Radius). */
+.opt-label {
   font-family: var(--font-ui);
   font-weight: 500;
   font-size: 12px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ---- Link inputs (account + stream) -------------------------------------- */
+.link-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  transition: border-color 0.15s;
+}
+
+.link-field:focus-within {
+  border-color: var(--control-border);
+}
+
+.link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--icon-muted);
+}
+
+.link-icon svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* Once a stream channel is recognised the globe becomes the platform mark. */
+.link-icon.is-set {
   color: var(--text);
 }
 
-.dual {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-.field-grow {
+.link-input {
   flex: 1;
   min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  padding: 0;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 24px;
+  text-overflow: ellipsis;
 }
 
-.field-weight {
-  width: 96px;
-  flex-shrink: 0;
+.link-input::placeholder {
+  color: var(--text-muted);
 }
 
-.field-opacity {
-  width: 82px;
-  flex-shrink: 0;
+/* ---- Generic text inputs (font search / weight) --------------------------- */
+.field-input {
+  width: 100%;
+  height: 40px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
-.opacity {
-  text-align: center;
+.field-input::placeholder {
+  color: var(--text-muted);
+}
+
+.field-input:focus {
+  border-color: var(--control-border);
 }
 
 select.field-input {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23aaa' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 30px;
+  padding-right: 40px;
+  font-weight: 700;
+}
+
+select.field-input option {
+  background: var(--input-bg);
+  font-weight: 400;
 }
 
 /* ---- Checkboxes ---------------------------------------------------------- */
+/* Wraps into rows of three at the sidebar's width (Figma 182:225). */
+.check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .check {
   display: flex;
   align-items: center;
@@ -433,109 +432,284 @@ select.field-input {
 
 .check input[type='checkbox'] {
   appearance: none;
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--line);
+  width: 21px;
+  height: 21px;
+  border: 1px solid var(--control-border);
   border-radius: 4px;
-  background: #2d2d2d;
+  background: var(--input-bg);
   cursor: pointer;
   flex-shrink: 0;
-  position: relative;
-  transition: background 0.12s;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.check input[type='checkbox']:hover {
+  border-color: var(--line);
 }
 
 .check input[type='checkbox']:checked {
-  background-color: #2d2d2d;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.2L4.6 9L10 3' stroke='%23f0f0f0' fill='none' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
+  background-size: 15px 15px;
+}
+
+.check input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--line);
+  outline-offset: 1px;
 }
 
 .check-text {
   font-family: var(--font-ui);
   font-weight: 500;
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: -0.02em;
   color: var(--text);
 }
 
-/* ---- Stat pills / segmented toggle -------------------------------------- */
-/* Stat pills: a 4-column grid that wraps to a second row, so the pills keep a
-   consistent size instead of shrinking to squeeze onto one row (Figma 29:674).
-   With 5 options that puts four on row 1 and the fifth on row 2, same width. */
+/* ---- Advanced options ---------------------------------------------------- */
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.opt-label-fixed {
+  width: 66px;
+  flex-shrink: 0;
+}
+
+.opt-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advanced-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--input-bg);
+  border: 0;
+  border-radius: var(--radius-field);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.advanced-btn:hover {
+  background: #262626;
+}
+
+/* ---- Stat pills ---------------------------------------------------------- */
+/* A 4-column grid that wraps to a second row, so the pills keep a consistent
+   size: four on row 1 and the fifth on row 2, same width. */
 .pill-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
-.seg-row {
-  display: flex;
-  gap: 6px;
-}
 
-/* The rows set display:flex, which would otherwise beat the [hidden] UA rule,
-   so collapse them explicitly when their parent toggle is off. `.check` rows are
-   toggled per-provider (Flag vs Avatar/Badge), so they need the same guard. */
-.pill-row[hidden],
-.seg-row[hidden],
-.check[hidden] {
-  display: none;
-}
-
-.pill,
-.seg {
-  flex: 1;
+.pill {
   min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
+  padding: 12px 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-field);
-  background: var(--pill-dark);
-  color: #f0f0f0;
+  color: var(--text-muted);
   font-family: var(--font-ui);
   font-weight: 700;
   font-size: 14px;
-  letter-spacing: -0.01em;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
 
-.pill.selected,
-.seg.selected {
-  background: #f0f0f0;
-  color: var(--pill-dark);
+.pill:hover:not(:disabled) {
+  color: var(--text);
 }
 
-.pill:disabled,
-.seg:disabled {
+.pill.selected {
+  background: var(--control);
+  color: #ffffff;
+}
+
+.pill:disabled {
   cursor: not-allowed;
 }
 
-/* PREMIER | FACEIT provider toggle (Figma 64:1275) — a #0f0f0f track where the
-   active segment is a dark #191919 pill with a #2b2b2b border and white text,
-   and the inactive segment is transparent with muted grey text. Distinct from
-   the white-fill W/L seg-row above. */
-.provider-toggle {
-  gap: 0;
-  padding: 6px;
-  background: #0f0f0f;
-  border-radius: 8px;
-}
-.provider-toggle .seg {
-  padding: 6px 12px;
-  border: 1px solid transparent; /* reserve the border box so the active pill doesn't shift the row */
-  border-radius: 5.5px;
-  background: transparent;
-  color: #707070;
-  font-size: 16px;
-}
-.provider-toggle .seg.selected {
-  background: #191919;
-  border-color: #2b2b2b;
-  color: #fff;
+/* The whole grid dims while the Stats block is off; pills disabled only by
+   the 3-stat cap keep their normal unselected look. */
+.pill-row.is-off .pill {
+  opacity: 0.5;
 }
 
-/* ---- Font combobox ------------------------------------------------------- */
+/* ---- Segmented toggles (provider / W/L / history / corner radius) --------- */
+/* A #202020 track; the active segment is a raised #2c2c2c pill, the rest are
+   transparent with muted text (Figma 182:59 / 182:196 / 182:121). */
+.seg-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  padding: 6px;
+  background: var(--input-bg);
+  border-radius: var(--radius-field);
+}
+
+.seg {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid transparent; /* reserve the border so the active pill doesn't shift the row */
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.seg:hover:not(:disabled):not(.selected) {
+  color: var(--text-dim);
+}
+
+.seg.selected {
+  background: var(--control);
+  border-color: var(--control-border);
+  color: #ffffff;
+  box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.25);
+}
+
+.seg:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* STREAM before a stream link is entered: clickable (it jumps to the field),
+   but reads as unavailable. */
+.seg.unavailable:not(.selected) {
+  color: #4a4a4a;
+}
+
+.provider-toggle {
+  flex: none;
+}
+
+.provider-toggle .seg.selected {
+  border-color: #404040;
+}
+
+/* ---- Background colour + opacity ----------------------------------------- */
+.bg-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bg-field {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 8px 12px 8px 8px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  transition: border-color 0.15s;
+}
+
+.bg-field:focus-within {
+  border-color: var(--control-border);
+}
+
+.swatch {
+  width: 23px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: inset 0 0 8.4px 5px rgba(0, 0, 0, 0.06);
+}
+
+.swatch input[type='color'] {
+  width: 200%;
+  height: 200%;
+  margin: -25%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.bg-hex,
+.bg-opacity {
+  background: none;
+  border: 0;
+  outline: none;
+  padding: 0;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+}
+
+.bg-hex {
+  width: 64px;
+  text-transform: uppercase;
+}
+
+.bg-opacity {
+  width: 32px;
+  text-align: right;
+}
+
+/* Short vertical rule between the hex and opacity values. */
+.bg-sep {
+  width: 1.6px;
+  height: 17.6px;
+  margin: 0 11px;
+  background: #424242;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.bg-pct {
+  width: 24px;
+  text-align: center;
+  color: var(--icon-muted);
+  font-size: 16px;
+}
+
+/* ---- Text: font combobox + weight select --------------------------------- */
+.text-row {
+  display: flex;
+  gap: 8px;
+}
+
+.text-row .combo {
+  width: 164px;
+  flex-shrink: 0;
+}
+
+.select-box {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
 .combo {
   position: relative;
 }
@@ -545,7 +719,8 @@ select.field-input {
 }
 
 .combo-input {
-  padding-right: 34px;
+  padding-right: 40px;
+  text-overflow: ellipsis;
 }
 
 .combo-caret {
@@ -553,9 +728,9 @@ select.field-input {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  color: #aaa;
+  width: 15px;
+  height: 15px;
+  color: var(--icon-muted);
   pointer-events: none;
 }
 
@@ -570,11 +745,12 @@ select.field-input {
   z-index: 30;
   top: calc(100% + 4px);
   left: 0;
-  right: 0;
+  width: 284px;
+  max-width: calc(100vw - 64px);
   max-height: 240px;
   overflow-y: auto;
-  background: #161616;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #1a1a1a;
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-field);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
@@ -596,53 +772,16 @@ select.field-input {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ---- Background color swatch + hex --------------------------------------- */
-.color-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.swatch {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-field);
-  overflow: hidden;
-  cursor: pointer;
-  box-shadow: inset 0 0 8px 4px rgba(0, 0, 0, 0.06);
-}
-
-.swatch input[type='color'] {
-  width: 200%;
-  height: 200%;
-  margin: -25%;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.hex {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  text-transform: lowercase;
-}
-
 /* ---- Footer -------------------------------------------------------------- */
 .setup-foot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding-top: 4px;
 }
 
 .foot-logo {
-  height: 30px;
+  height: 32px;
   width: auto;
   display: block;
 }
@@ -660,7 +799,7 @@ select.field-input {
   position: relative;
   flex: 1;
   min-height: 340px;
-  border: 1px solid var(--card-border);
+  border: 2px solid var(--card-border);
   border-radius: var(--radius-card);
   overflow: hidden;
   background-color: #101411;
@@ -737,9 +876,9 @@ select.field-input {
   display: flex;
   align-items: flex-end;
   gap: 16px;
-  padding: 16px;
+  padding: 16px 20px;
   background: var(--card);
-  border: 1px solid var(--card-border);
+  border: 2px solid var(--card-border);
   border-radius: var(--radius-card);
 }
 
@@ -747,6 +886,13 @@ select.field-input {
 .exportbar.is-empty .export-zip {
   opacity: 0.24;
   pointer-events: none;
+}
+
+.exportbar .field-label {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
 }
 
 .export-url {
@@ -761,10 +907,10 @@ select.field-input {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 46px;
+  height: 44px;
   background: var(--input-bg);
   border-radius: var(--radius-field);
-  padding: 0 17px;
+  padding: 0 16px;
 }
 
 .url-input {
@@ -782,7 +928,7 @@ select.field-input {
 }
 
 .url-input::placeholder {
-  color: #7e7e7e;
+  color: var(--text-muted);
   font-weight: 400;
 }
 
@@ -799,7 +945,7 @@ select.field-input {
   padding: 0;
   border: none;
   background: none;
-  color: #cfcfcf;
+  color: var(--icon-muted);
   cursor: pointer;
   transition: color 0.12s;
 }
@@ -868,10 +1014,10 @@ select.field-input {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 46px;
+  height: 44px;
   padding: 0 18px;
-  background: #131315;
-  border: 1px solid var(--line);
+  background: var(--control);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-field);
   color: var(--text);
   font-family: var(--font-ui);
@@ -889,7 +1035,7 @@ select.field-input {
 }
 
 .zip-btn:hover:not(:disabled) {
-  filter: brightness(1.3);
+  filter: brightness(1.2);
 }
 
 .zip-btn:disabled {
@@ -940,7 +1086,7 @@ select.field-input {
 .foot-legal {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 .foot-link {
   background: none;
@@ -948,8 +1094,9 @@ select.field-input {
   padding: 0;
   cursor: pointer;
   font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--text-dim);
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  color: var(--text-muted);
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.15s ease;
@@ -958,9 +1105,10 @@ select.field-input {
   color: var(--text);
 }
 .foot-sep {
-  color: var(--text-dim);
-  font-size: 12px;
-  user-select: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-muted);
 }
 
 /* ---- Cookie consent banner (a card pinned to the bottom of the setup
