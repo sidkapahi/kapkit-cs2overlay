@@ -263,8 +263,49 @@ body {
   overscroll-behavior: contain;
   margin: -4px -24px;
   padding: 4px 24px;
-  scrollbar-width: thin;
-  scrollbar-color: #3a3a3a transparent;
+}
+
+/* Scrollbar in the sidebar's control palette: a #202020 track (the input
+   fill) with a raised #2c2c2c thumb ringed in #3a3a3a, like the active
+   segments and pills. WebKit/Blink get the full shape; Chrome only honours
+   these pseudo-elements while scrollbar-color is unset, so the standard
+   properties are reserved for browsers without them (Firefox). */
+.setup-body::-webkit-scrollbar {
+  width: 10px;
+}
+/* Reserve the scrollbar's lane out of the right padding (24px - 10px) so the
+   controls keep their full width whether or not the body overflows. */
+@supports selector(::-webkit-scrollbar) {
+  .setup-body {
+    scrollbar-gutter: stable;
+    padding-right: 14px;
+  }
+}
+.setup-body::-webkit-scrollbar-track {
+  margin: 8px 0;
+  background: var(--input-bg);
+  border: 2px solid var(--card);
+  border-radius: 999px;
+}
+.setup-body::-webkit-scrollbar-thumb {
+  background: var(--control);
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+}
+.setup-body::-webkit-scrollbar-thumb:hover {
+  background: #363636;
+  border-color: var(--line);
+}
+.setup-body::-webkit-scrollbar-thumb:active {
+  background: #404040;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .setup-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--control-border) var(--input-bg);
+    scrollbar-gutter: stable;
+    padding-right: 16px;
+  }
 }
 
 .setup-body > * {
@@ -1094,6 +1135,7 @@ select.field-input option {
   /* Stacked on mobile the page itself scrolls, so the body doesn't need to. */
   .setup-body {
     overflow: visible;
+    padding-right: 24px;
   }
 
   .stage {
