@@ -21,6 +21,11 @@ import './widget.css';
 // YouTube's tight API quota.
 const LIVE_POLL_INTERVAL = 15;
 
+// While the stream is live, the overlay sends a `live_heartbeat` at most this
+// often, so a "live now" view in PostHog can list who is streaming with it right
+// now (anyone heard from within the last couple of heartbeats).
+const LIVE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function init() {
@@ -74,6 +79,8 @@ async function init() {
   // Tracks fetch health so an outage fires overlay_error once (on the failing
   // transition), not on every poll while Leetify stays down.
   let statsHealthy = true;
+  // When the last live_heartbeat went out (ms epoch); 0 = none this load.
+  let lastHeartbeat = 0;
 
   // Renders whatever we currently know. In session mode it advances the session
   // from the newest live status + matches, then overrides the W/L pills with the
@@ -87,8 +94,16 @@ async function init() {
       // A false→true flip is a fresh stream session starting; count it once.
       // (An OBS source refresh reloads the persisted live=true state, so it
       // won't re-fire — we count real go-live transitions, not refreshes.)
+      const liveProps = { platform: config.livePlatform, channel: config.liveChannel };
       if (!wasLive && sessionState.live) {
-        trackOverlayEvent('live_session_started', { platform: config.livePlatform });
+        trackOverlayEvent('live_session_started', liveProps);
+      }
+      // Heartbeat while live, throttled by time rather than a timer: render()
+      // runs on every live/stats poll, and OBS can freeze a hidden source's
+      // timers, so this also resumes on the wake-driven refreshes.
+      if (sessionState.live && Date.now() - lastHeartbeat >= LIVE_HEARTBEAT_INTERVAL_MS) {
+        lastHeartbeat = Date.now();
+        trackOverlayEvent('live_heartbeat', liveProps);
       }
       saveSession(config.steamId, config.livePlatform, config.liveChannel, sessionState);
       const wl = readWinLoss(sessionState);
