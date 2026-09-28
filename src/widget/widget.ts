@@ -24,7 +24,7 @@ const LIVE_POLL_INTERVAL = 15;
 // While the stream is live, the overlay sends a `live_heartbeat` at most this
 // often, so a "live now" view in PostHog can list who is streaming with it right
 // now (anyone heard from within the last couple of heartbeats).
-const LIVE_HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000;
+const LIVE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

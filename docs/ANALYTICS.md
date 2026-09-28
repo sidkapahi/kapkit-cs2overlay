@@ -50,7 +50,7 @@ heartbeat events.
 | --- | --- | --- |
 | `cs2overlay_overlay_active` | The overlay loads in OBS (once per load) | `live` — `true` if a live session is active; `platform` — `twitch` \| `youtube` \| `kick` \| `''` |
 | `cs2overlay_live_session_started` | The stream goes live and a new W/L session begins (once per go-live; an OBS refresh doesn't re-count) | `platform` — the live platform; `channel` — the public handle |
-| `cs2overlay_live_heartbeat` | Every ~5 minutes while the stream is live (and once right after an OBS refresh mid-stream). Powers the **Live Now** tile: a channel heard from in the last ~12 minutes is treated as live | `platform` — the live platform; `channel` — the public handle |
+| `cs2overlay_live_heartbeat` | Every ~1 minute while the stream is live (and once right after an OBS refresh mid-stream). Powers the **Live Now** tile: a channel heard from in the last ~3 minutes is treated as live | `platform` — the live platform; `channel` — the public handle |
 | `cs2overlay_overlay_error` | A stats fetch fails **and a retry ~2s later also fails** — fires **once per outage episode**, not every poll | `reason` — see [reason codes](#error-reason-codes); `detail` — short PII-free error text (diagnoses the `other` bucket); `provider` — `leetify` \| `faceit` |
 
 > The overlay is cookieless, so each load looks like a new anonymous visitor.
