@@ -123,7 +123,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 40px;
-  overflow-y: auto;
+  /* Header and footer stay put; only .setup-body scrolls between them. */
+  overflow: hidden;
   max-height: calc(100vh - 48px);
 }
 
@@ -131,6 +132,11 @@ body {
    [hidden] UA rule (provider-specific toggles, the advanced panel). */
 .setup [hidden] {
   display: none !important;
+}
+
+.setup-head,
+.setup-foot {
+  flex-shrink: 0;
 }
 
 .setup-head {
@@ -243,11 +249,26 @@ body {
 }
 
 /* ---- Body sections ------------------------------------------------------- */
+/* The only scrolling region of the sidebar. It bleeds out to the card's edges
+   (negative margin, matching padding) so the scrollbar sits against the border
+   instead of eating into the 284px content column, and so focus rings on the
+   first/last controls aren't clipped. */
 .setup-body {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: -4px -24px;
+  padding: 4px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a transparent;
+}
+
+.setup-body > * {
+  flex-shrink: 0;
 }
 
 .group {
@@ -743,7 +764,9 @@ select.field-input option {
 .combo-list {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 4px);
+  /* Opens upward: the font picker is the last control in the scrolling body,
+     so dropping down would be clipped by it. */
+  bottom: calc(100% + 4px);
   left: 0;
   width: 284px;
   max-width: calc(100vw - 64px);
@@ -1065,7 +1088,12 @@ select.field-input option {
     width: 100%;
     max-width: 100%;
     max-height: none;
-    overflow-y: visible;
+    overflow: visible;
+  }
+
+  /* Stacked on mobile the page itself scrolls, so the body doesn't need to. */
+  .setup-body {
+    overflow: visible;
   }
 
   .stage {
