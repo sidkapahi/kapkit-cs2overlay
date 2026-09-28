@@ -20,6 +20,7 @@ import {
   configToParams,
   parseLiveInput,
   settingsFingerprint,
+  type LiveChannel,
 } from "../shared/config";
 import { downloadOverlayZip } from "../shared/export";
 import { FONT_WEIGHTS, GOOGLE_FONTS, fontStack, loadFont } from "../shared/fonts";
@@ -62,10 +63,13 @@ const ICON_GITHUB = gitHubLogo;
 const ICON_KOFI = koFiLogo;
 const ICON_TWITCH = twitchLogo;
 const ICON_STREAMELEMENTS = streamElementsLogo;
-const ICON_CARET = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
-// Pencil for the live-session chip's "edit" button (return to the input).
-const ICON_PENCIL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-// Monochrome platform mark shown in the live-session chip, keyed by platform.
+// Radix icons from the sidebar design (Figma 182:3): caret for the font/weight
+// dropdowns, globe for an empty link field, and the section reset arrow.
+const ICON_CARET = `<svg viewBox="0 0 15 15" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.135 6.158a.5.5 0 0 1 .707-.023L7.5 9.565l3.658-3.43a.5.5 0 0 1 .684.73l-4 3.75a.5.5 0 0 1-.684 0l-4-3.75a.5.5 0 0 1-.023-.707Z"/></svg>`;
+const ICON_GLOBE = `<svg viewBox="0 0 15 15" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.8a5.7 5.7 0 1 0 0 11.4 5.7 5.7 0 0 0 0-11.4ZM.9 7.5a6.6 6.6 0 1 1 13.2 0 6.6 6.6 0 0 1-13.2 0Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M13.5 7.9h-12v-.8h12v.8Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M7.1 13.5v-12h.8v12h-.8Zm3.275-6c0-2.173-.781-4.322-2.313-5.743l.476-.513C10.24 2.822 11.075 5.173 11.075 7.5c0 2.327-.835 4.678-2.537 6.257l-.476-.514c1.532-1.421 2.313-3.57 2.313-5.743ZM4 7.5c0-2.324.808-4.673 2.458-6.253l.484.506C5.458 3.173 4.7 5.324 4.7 7.5c0 2.176.758 4.327 2.242 5.747l-.484.506C4.808 12.173 4 9.824 4 7.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 3.958c2.17 0 4.375.401 5.87 1.236a.35.35 0 1 1-.34.611C11.679 5.052 9.608 4.658 7.5 4.658s-4.18.394-5.53 1.147a.35.35 0 1 1-.34-.61C3.124 4.358 5.33 3.957 7.5 3.957Zm0 6.892c2.17 0 4.375-.401 5.87-1.237a.35.35 0 1 0-.34-.61c-1.351.753-3.422 1.147-5.53 1.147s-4.18-.394-5.53-1.148a.35.35 0 1 0-.34.611c1.495.836 3.7 1.237 5.87 1.237Z"/></svg>`;
+const ICON_RESET = `<svg viewBox="0 0 15 15" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.854 2.146a.5.5 0 0 1 0 .708L3.707 4H9a4.5 4.5 0 1 1 0 9H5a.5.5 0 0 1 0-1h4a3.5 3.5 0 1 0 0-7H3.707l1.147 1.146a.5.5 0 1 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0Z"/></svg>`;
+// Monochrome platform mark shown in the stream-link field once a channel is
+// recognised, keyed by platform.
 const LIVE_PLATFORM_MARKS: Record<string, string> = {
   twitch: twitchMark,
   youtube: youTubeMark,
@@ -117,14 +121,16 @@ let lastTrackedSteamId: string | null = null;
 // Last live channel we counted, so adopting a channel fires one adoption event
 // (not one per keystroke).
 let lastTrackedLive = "";
-// Which source drives the W/L pills: 'leetify' = rolling window, 'live' =
-// per-stream session (reveals the live-channel field). Mirrors whether a live
-// channel is set on the config.
+// Which source drives the W/L pills: 'leetify' = rolling window (TOTAL),
+// 'live' = per-stream session (STREAM). STREAM is only possible once a stream
+// link is entered; entering one switches to it automatically.
 let wlMode: "leetify" | "live" = "leetify";
-// When true, show the live-channel input even though a channel is set — i.e. the
-// user is entering or editing a link. When false (and a channel is set), the
-// input collapses into the platform chip.
-let editingLive = false;
+// The stream link as typed, and the channel parsed from it (null if unusable).
+// Kept apart from the config so picking TOTAL doesn't lose the link.
+let liveRaw = "";
+let liveParsed: LiveChannel | null = null;
+// Whether the advanced options (W/L source, stat picker, history mode) are open.
+let advancedOpen = false;
 // Bumped on every new resolve so a slow vanity lookup that finishes after the
 // user has typed something else can't overwrite the newer input's result.
 let resolveToken = 0;
@@ -385,9 +391,8 @@ function syncProviderToggle() {
   }
 }
 
-// Shows the Design toggles that belong to the current provider: FACEIT gets a
-// Flag toggle (no Avatar, no in-game Badge — the dial is always shown); Premier
-// gets Avatar + Badge (no Flag).
+// Swaps the provider-specific Data toggles: FACEIT gets Flag (its dial is
+// always shown, so no Styled Rank); Premier gets Styled Rank (no Flag).
 function syncProviderRows() {
   const faceit = currentConfig.provider === "faceit";
   const set = (id: string, hidden: boolean) => {
@@ -395,20 +400,54 @@ function syncProviderRows() {
     if (el) el.hidden = hidden;
   };
   set("flag-row", !faceit);
-  set("avatar-row", faceit);
   set("badge-row", faceit);
   syncHistoryModeUi();
 }
 
+// ---- Sidebar scroll fades ------------------------------------------------
+// Shows the top/bottom fade only while the scrolling body has hidden content in
+// that direction, so nothing is faded at rest or on mobile (where the body
+// doesn't scroll).
+function syncScrollFades() {
+  const setup = document.querySelector<HTMLElement>(".setup");
+  const body = document.querySelector<HTMLElement>(".setup-body");
+  if (!setup || !body) return;
+  const maxScroll = body.scrollHeight - body.clientHeight;
+  setup.classList.toggle("fade-top", body.scrollTop > 1);
+  setup.classList.toggle("fade-bottom", body.scrollTop < maxScroll - 1);
+}
+
+function bindScrollFades() {
+  const body = document.querySelector<HTMLElement>(".setup-body")!;
+  body.addEventListener("scroll", syncScrollFades, { passive: true });
+  // Re-check when the viewport or any section's height changes (advanced panel,
+  // provider rows, window resize).
+  const ro = new ResizeObserver(syncScrollFades);
+  ro.observe(body);
+  for (const child of body.children) ro.observe(child);
+  syncScrollFades();
+}
+
+// ---- Show / close advanced -----------------------------------------------
+function syncAdvancedUi() {
+  const panel = document.getElementById("advanced")!;
+  const btn = document.getElementById("advanced-toggle")!;
+  panel.hidden = !advancedOpen;
+  btn.textContent = advancedOpen ? "CLOSE ADVANCED" : "SHOW ADVANCED";
+  btn.setAttribute("aria-expanded", String(advancedOpen));
+}
+
 // ---- Match history mode (W/L letters vs per-match ELO) --------------------
-// FACEIT only — Premier has no per-match rating change to show — and only while
-// Match History is on.
+// FACEIT only — Premier has no per-match rating change to show. Dimmed while
+// Match History itself is off.
 function syncHistoryModeUi() {
-  const row = document.getElementById("history-mode");
+  const row = document.getElementById("history-mode-row");
   if (!row) return;
-  row.hidden = !(currentConfig.provider === "faceit" && currentConfig.showMatchHistory);
+  row.hidden = currentConfig.provider !== "faceit";
+  const on = currentConfig.showMatchHistory;
   for (const seg of row.querySelectorAll<HTMLButtonElement>(".seg")) {
     seg.classList.toggle("selected", seg.dataset.hist === currentConfig.historyMode);
+    seg.disabled = !on;
   }
 }
 
@@ -416,7 +455,7 @@ function bindHistoryMode() {
   document.getElementById("show-history")!.addEventListener("change", syncHistoryModeUi);
   document.getElementById("history-mode")!.addEventListener("click", (e) => {
     const seg = (e.target as HTMLElement).closest<HTMLButtonElement>(".seg");
-    if (!seg) return;
+    if (!seg || seg.disabled) return;
     currentConfig.historyMode = seg.dataset.hist === "elo" ? "elo" : "wl";
     syncHistoryModeUi();
     renderPreview();
@@ -427,7 +466,6 @@ function bindHistoryMode() {
 // Simple display toggles → config keys. Stats and win/loss gate nested controls,
 // so they're bound separately.
 const checkboxMap: Record<string, keyof WidgetConfig> = {
-  "show-avatar": "showAvatar",
   "show-flag": "showFlag",
   "show-name": "showName",
   "show-change": "showChange",
@@ -435,14 +473,11 @@ const checkboxMap: Record<string, keyof WidgetConfig> = {
   "show-badge": "showBadge",
 };
 
-// ---- Stats picker (pill row) ---------------------------------------------
+// ---- Stats picker (pill grid) --------------------------------------------
 function syncStatsUi() {
   const on = currentConfig.showStats;
   const row = document.getElementById("stats-pills")!;
-  // Collapse the stat pills entirely when the block is off, rather than showing
-  // them dimmed — the sub-options only belong in the list when their parent is on.
-  row.hidden = !on;
-
+  row.classList.toggle("is-off", !on);
   const atMax = currentConfig.stats.length >= STAT_MAX;
   for (const btn of row.querySelectorAll<HTMLButtonElement>(".pill")) {
     const key = btn.dataset.stat as StatKey;
@@ -484,48 +519,35 @@ function bindStats() {
   });
 }
 
-// ---- Win/Loss source toggle (Leetify vs live session) ---------------------
+// ---- Stream link + Win/Loss source (STREAM vs TOTAL) ----------------------
+// The config only carries a live channel while W/L is set to STREAM, so the
+// overlay tracks the session only when the streamer asked for it.
+function applyLive() {
+  const live = wlMode === "live" ? liveParsed : null;
+  currentConfig.livePlatform = live?.platform ?? "";
+  currentConfig.liveChannel = live?.channel ?? "";
+}
+
 function syncWlUi() {
   const on = currentConfig.showWinLoss;
   const row = document.getElementById("wl-mode")!;
-  // Hide the Leetify/Live source picker entirely when W/L is off — the sub-
-  // options only belong in the list when their parent is on.
-  row.hidden = !on;
   for (const seg of row.querySelectorAll<HTMLButtonElement>(".seg")) {
     seg.classList.toggle("selected", seg.dataset.mode === wlMode);
     seg.disabled = !on;
+    // STREAM needs a stream link first; clicking it without one jumps to the
+    // field instead (see bindWl), so it only looks unavailable.
+    if (seg.dataset.mode === "live") seg.classList.toggle("unavailable", !liveParsed);
   }
-
-  // In Live mode: once a valid channel is set (and we're not editing) the input
-  // collapses into the platform chip; otherwise the input is shown so the user
-  // can paste a link.
-  const liveActive = on && wlMode === "live";
-  const hasChannel = !!currentConfig.livePlatform && !!currentConfig.liveChannel;
-  const showChip = liveActive && hasChannel && !editingLive;
-
-  const liveField = document.getElementById("live-channel") as HTMLInputElement;
-  const chip = document.getElementById("live-chip")!;
-  liveField.hidden = !(liveActive && !showChip);
-  chip.hidden = !showChip;
-  if (showChip) renderLiveChip();
+  renderLiveIcon();
 }
 
-// Fills the chip with the current platform's mark and channel name.
-function renderLiveChip() {
-  const logo = document.getElementById("live-chip-logo")!;
-  const name = document.getElementById("live-chip-name")!;
-  logo.innerHTML = LIVE_PLATFORM_MARKS[currentConfig.livePlatform] ?? "";
-  name.textContent = currentConfig.liveChannel;
-}
-
-// Reads the live-channel input, detects the platform, and writes the parsed
-// result onto the config. Returns the config's channel (or '' if unusable).
-function applyLiveInput(): string {
-  const liveField = document.getElementById("live-channel") as HTMLInputElement;
-  const parsed = parseLiveInput(liveField.value);
-  currentConfig.livePlatform = parsed?.platform ?? "";
-  currentConfig.liveChannel = parsed?.channel ?? "";
-  return currentConfig.liveChannel;
+// The stream-link field's icon: a globe until a channel is recognised, then
+// that platform's mark.
+function renderLiveIcon() {
+  const icon = document.getElementById("live-icon")!;
+  const mark = liveParsed ? LIVE_PLATFORM_MARKS[liveParsed.platform] : undefined;
+  icon.innerHTML = mark ?? ICON_GLOBE;
+  icon.classList.toggle("is-set", !!mark);
 }
 
 // Fires one `live_selected` event the first time a valid channel is adopted (and
@@ -554,47 +576,47 @@ function bindWl() {
 
   const liveField = document.getElementById("live-channel") as HTMLInputElement;
 
-  const row = document.getElementById("wl-mode")!;
-  row.addEventListener("click", (e) => {
+  document.getElementById("wl-mode")!.addEventListener("click", (e) => {
     const seg = (e.target as HTMLElement).closest<HTMLButtonElement>(".seg");
     if (!seg || seg.disabled) return;
-    wlMode = seg.dataset.mode === "live" ? "live" : "leetify";
-    // Leetify mode drops the live channel entirely; Live mode adopts whatever is
-    // already typed in the (now visible) field.
-    if (wlMode === "live") {
-      applyLiveInput();
-      editingLive = false; // show the chip if a channel is already set
-    } else {
-      currentConfig.livePlatform = "";
-      currentConfig.liveChannel = "";
+    if (seg.dataset.mode === "live" && !liveParsed) {
+      liveField.focus();
+      return;
     }
+    wlMode = seg.dataset.mode === "live" ? "live" : "leetify";
+    applyLive();
     trackLiveSelected();
     syncWlUi();
-    // If we dropped into the empty input, put the cursor there ready to paste.
-    if (wlMode === "live" && !liveField.hidden) liveField.focus();
     updateGeneratedUrl();
   });
 
-  // While the field is focused the user is editing, so keep the input visible.
+  // While focused, the field shows the link as typed; once it loses focus with a
+  // recognised channel it shows just the channel name next to the platform mark.
   liveField.addEventListener("focus", () => {
-    editingLive = true;
+    liveField.value = liveRaw;
   });
   liveField.addEventListener("input", () => {
+    liveRaw = liveField.value;
+    const hadChannel = !!liveParsed;
+    liveParsed = parseLiveInput(liveRaw);
+    // A stream link switches W/L to STREAM the moment one is recognised, and
+    // clearing it falls back to TOTAL. Picking TOTAL by hand sticks while the
+    // link is edited.
+    if (liveParsed && !hadChannel) wlMode = "live";
+    if (!liveParsed) wlMode = "leetify";
     // Update the preview/URL live as they type, but don't track yet: every
     // keystroke of a bare login is itself a "valid" channel, so tracking here
     // fires a live_selected per character. Tracking happens on commit (blur).
-    applyLiveInput();
+    applyLive();
+    syncWlUi();
     updateGeneratedUrl();
   });
-  // Leaving the field (blur) or pressing Enter collapses it into the chip once a
-  // valid channel is present.
   liveField.addEventListener("blur", () => {
-    editingLive = false;
+    liveField.value = liveParsed ? liveParsed.channel : liveRaw;
     // Commit point: the user has finished typing (blurred or pressed Enter, which
     // blurs). Track the final channel here so we get one event per real channel
     // rather than one per keystroke.
     trackLiveSelected();
-    syncWlUi();
   });
   liveField.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -602,15 +624,37 @@ function bindWl() {
       liveField.blur();
     }
   });
+}
 
-  // The chip's pencil returns to the default input state so the link can be
-  // changed (its current value stays, selected, ready to overwrite).
-  document.getElementById("live-chip-edit")!.addEventListener("click", () => {
-    editingLive = true;
-    syncWlUi();
-    liveField.focus();
-    liveField.select();
-  });
+// ---- Section resets --------------------------------------------------------
+// Each section header's reset arrow puts just that section back to defaults.
+function resetSection(section: string) {
+  const d = DEFAULT_CONFIG;
+  if (section === "data") {
+    currentConfig.showFlag = d.showFlag;
+    currentConfig.showName = d.showName;
+    currentConfig.showBadge = d.showBadge;
+    currentConfig.showWinLoss = d.showWinLoss;
+    currentConfig.showStats = d.showStats;
+    currentConfig.showChange = d.showChange;
+    currentConfig.showMatchHistory = d.showMatchHistory;
+    currentConfig.historyMode = d.historyMode;
+    currentConfig.stats = [...DEFAULT_STATS_BY_PROVIDER[currentConfig.provider]];
+    wlMode = liveParsed ? "live" : "leetify";
+    applyLive();
+  } else if (section === "background") {
+    currentConfig.bgColor = d.bgColor;
+    currentConfig.bgOpacity = d.bgOpacity;
+    currentConfig.cornerRadius = d.cornerRadius;
+  } else if (section === "text") {
+    currentConfig.font = d.font;
+    currentConfig.fontWeight = d.fontWeight;
+  } else {
+    return;
+  }
+  syncControlsFromConfig();
+  renderPreview();
+  updateGeneratedUrl();
 }
 
 // ---- Font combobox -------------------------------------------------------
@@ -680,15 +724,17 @@ function bindWeight() {
 }
 
 // ---- Background color + opacity -----------------------------------------
+// The hex field shows the colour without its '#', and the opacity field a bare
+// number with a static '%' suffix beside it.
 function bindBackground() {
   const color = document.getElementById("bg-color") as HTMLInputElement;
   const hex = document.getElementById("bg-hex") as HTMLInputElement;
   const opacity = document.getElementById("bg-opacity") as HTMLInputElement;
 
-  const applyColor = (value: string) => {
+  const applyColor = (value: string, fromHex = false) => {
     currentConfig.bgColor = value;
     color.value = value;
-    hex.value = value;
+    if (!fromHex) hex.value = value.slice(1);
     renderPreview();
     updateGeneratedUrl();
   };
@@ -696,16 +742,13 @@ function bindBackground() {
   color.addEventListener("input", () => applyColor(color.value));
 
   hex.addEventListener("input", () => {
-    const v = hex.value.trim();
-    if (/^#?[0-9a-fA-F]{6}$/.test(v)) {
-      applyColor(v.startsWith("#") ? v.toLowerCase() : `#${v.toLowerCase()}`);
-    }
+    const v = hex.value.trim().replace(/^#/, "");
+    if (/^[0-9a-fA-F]{6}$/.test(v)) applyColor(`#${v.toLowerCase()}`, true);
+  });
+  hex.addEventListener("blur", () => {
+    hex.value = currentConfig.bgColor.slice(1);
   });
 
-  // Opacity reads as "100%" but accepts a raw number while typing.
-  opacity.addEventListener("focus", () => {
-    opacity.value = String(currentConfig.bgOpacity);
-  });
   opacity.addEventListener("input", () => {
     const digits = opacity.value.replace(/[^\d]/g, "");
     currentConfig.bgOpacity = Math.max(0, Math.min(100, parseInt(digits || "0", 10)));
@@ -713,7 +756,7 @@ function bindBackground() {
     updateGeneratedUrl();
   });
   opacity.addEventListener("blur", () => {
-    opacity.value = `${currentConfig.bgOpacity}%`;
+    opacity.value = String(currentConfig.bgOpacity);
   });
 }
 
@@ -784,7 +827,7 @@ function bindCornerRadius() {
   });
 }
 
-// Pushes currentConfig into every control (used on init).
+// Pushes currentConfig into every control (used on init and section resets).
 function syncControlsFromConfig() {
   for (const [id, key] of Object.entries(checkboxMap)) {
     (document.getElementById(id) as HTMLInputElement).checked = currentConfig[
@@ -794,14 +837,13 @@ function syncControlsFromConfig() {
 
   (document.getElementById("show-stats") as HTMLInputElement).checked =
     currentConfig.showStats;
+  const pills = document.getElementById("stats-pills");
+  if (pills) pills.innerHTML = statPillsHtml();
   syncStatsUi();
 
   (document.getElementById("show-wl") as HTMLInputElement).checked =
     currentConfig.showWinLoss;
-  wlMode = currentConfig.livePlatform ? "live" : "leetify";
-  editingLive = false; // a restored channel shows as a chip, not an open input
-  (document.getElementById("live-channel") as HTMLInputElement).value =
-    currentConfig.liveChannel;
+  if (currentConfig.livePlatform) wlMode = "live";
   syncWlUi();
 
   const search = document.getElementById("font-search") as HTMLInputElement;
@@ -815,14 +857,16 @@ function syncControlsFromConfig() {
   (document.getElementById("bg-color") as HTMLInputElement).value =
     currentConfig.bgColor;
   (document.getElementById("bg-hex") as HTMLInputElement).value =
-    currentConfig.bgColor;
-  (document.getElementById("bg-opacity") as HTMLInputElement).value =
-    `${currentConfig.bgOpacity}%`;
+    currentConfig.bgColor.slice(1);
+  (document.getElementById("bg-opacity") as HTMLInputElement).value = String(
+    currentConfig.bgOpacity,
+  );
   syncCornerRadius();
 
-  // Provider toggle + the provider-specific Design rows (Flag vs Avatar/Badge).
+  // Provider toggle + the provider-specific Data toggles (Flag vs Styled Rank).
   syncProviderToggle();
   syncProviderRows();
+  syncAdvancedUi();
 }
 
 function bindControls() {
@@ -859,6 +903,15 @@ function bindControls() {
   bindWeight();
   bindBackground();
   bindCornerRadius();
+
+  document.getElementById("advanced-toggle")!.addEventListener("click", () => {
+    advancedOpen = !advancedOpen;
+    syncAdvancedUi();
+  });
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-reset]")) {
+    btn.addEventListener("click", () => resetSection(btn.dataset.reset ?? ""));
+  }
 
   // Outbound header links (GitHub / Ko-fi / Twitch). One delegated listener
   // reads data-link so a single social_click event, broken down by `target`,
@@ -1157,7 +1210,7 @@ function init() {
       <aside class="setup">
         <div class="setup-head">
           <div class="brand-block">
-            <h1 class="setup-title">CS2 Overlay Widget</h1>
+            <h1 class="setup-title">CS2 Stats Overlay</h1>
             <p class="setup-sub">Customize and use your own browser source overlay for Premier or FACEIT. Data provided by <a class="leetify-link" href="https://leetify.com" target="_blank" rel="noopener">Leetify</a></p>
           </div>
           <div class="link-row">
@@ -1168,61 +1221,91 @@ function init() {
         </div>
 
         <div class="setup-body">
-          <section class="group group-steam">
-            <h2 class="group-label" id="identity-label">ACCOUNT</h2>
-            <input type="text" id="steam-id" class="field-input" placeholder="Steam ID / profile link, or FACEIT link / username" autocomplete="off" spellcheck="false">
-            <div class="seg-row provider-toggle" id="provider-toggle">
-              <button type="button" class="seg" data-provider="leetify">PREMIER</button>
-              <button type="button" class="seg" data-provider="faceit">FACEIT</button>
+          <div class="field">
+            <label class="group-label" for="steam-id">FACEIT or STEAM Link</label>
+            <div class="link-field">
+              <span class="link-icon" aria-hidden="true">${ICON_GLOBE}</span>
+              <input type="text" id="steam-id" class="link-input" placeholder="https://steamcommunity.com/id/yourname" autocomplete="off" spellcheck="false">
             </div>
+          </div>
+
+          <div class="field">
+            <label class="group-label" for="live-channel">Stream Link (Twitch, YT, Kick)</label>
+            <div class="link-field">
+              <span class="link-icon" id="live-icon" aria-hidden="true">${ICON_GLOBE}</span>
+              <input type="text" id="live-channel" class="link-input" placeholder="https://twitch.tv/yourchannel" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="divider" role="separator"></div>
+
+          <div class="seg-track provider-toggle" id="provider-toggle">
+            <button type="button" class="seg" data-provider="leetify">PREMIER</button>
+            <button type="button" class="seg" data-provider="faceit">FACEIT</button>
+          </div>
+
+          <section class="group">
+            <div class="group-head">
+              <h2 class="group-label">DATA</h2>
+              <button type="button" class="reset-btn" data-reset="data" aria-label="Reset data options">${ICON_RESET}</button>
+            </div>
+            <div class="check-grid">
+              <label class="check" id="flag-row" hidden><input type="checkbox" id="show-flag"><span class="check-text">Flag</span></label>
+              <label class="check"><input type="checkbox" id="show-name"><span class="check-text">Name</span></label>
+              <label class="check" id="badge-row"><input type="checkbox" id="show-badge"><span class="check-text">Styled Rank</span></label>
+              <label class="check"><input type="checkbox" id="show-wl"><span class="check-text">W/L</span></label>
+              <label class="check"><input type="checkbox" id="show-stats"><span class="check-text">Stats</span></label>
+              <label class="check"><input type="checkbox" id="show-change"><span class="check-text">Gain</span></label>
+              <label class="check"><input type="checkbox" id="show-history"><span class="check-text">Match History</span></label>
+            </div>
+
+            <div class="advanced" id="advanced" hidden>
+              <div class="opt-row">
+                <span class="opt-label opt-label-fixed">Win/Loss</span>
+                <div class="seg-track" id="wl-mode">
+                  <button type="button" class="seg" data-mode="live">STREAM</button>
+                  <button type="button" class="seg" data-mode="leetify">TOTAL</button>
+                </div>
+              </div>
+
+              <div class="opt-col">
+                <span class="opt-label">Stats (Max. ${STAT_MAX})</span>
+                <div class="pill-row" id="stats-pills">${statPillsHtml()}</div>
+              </div>
+
+              <div class="opt-row" id="history-mode-row" hidden>
+                <span class="opt-label">Match History</span>
+                <div class="seg-track" id="history-mode">
+                  <button type="button" class="seg" data-hist="wl">W/L</button>
+                  <button type="button" class="seg" data-hist="elo">ELO</button>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="advanced-btn" id="advanced-toggle" aria-controls="advanced" aria-expanded="false">SHOW ADVANCED</button>
           </section>
 
           <div class="divider" role="separator"></div>
 
           <section class="group">
-            <h2 class="group-label">DESIGN</h2>
-            <div class="stack">
-              <label class="check" id="flag-row" hidden><input type="checkbox" id="show-flag"><span class="check-text">Flag</span></label>
-              <label class="check"><input type="checkbox" id="show-name"><span class="check-text">Name</span></label>
-              <label class="check" id="avatar-row"><input type="checkbox" id="show-avatar"><span class="check-text">Avatar</span></label>
-              <label class="check" id="badge-row"><input type="checkbox" id="show-badge"><span class="check-text">In-game Styled Badge</span></label>
-
-              <div class="dual">
-                <div class="field field-grow">
-                  <label class="field-label" for="font-search">Font</label>
-                  <div class="combo">
-                    <div class="combo-box">
-                      <input type="text" id="font-search" class="field-input combo-input" placeholder="Search Google Fonts…" autocomplete="off" spellcheck="false">
-                      <span class="combo-caret">${ICON_CARET}</span>
-                    </div>
-                    <div class="combo-list" id="font-list" hidden></div>
-                  </div>
-                </div>
-                <div class="field field-weight">
-                  <label class="field-label" for="font-weight">Weight</label>
-                  <select id="font-weight" class="field-input select">${weightOptionsHtml()}</select>
-                </div>
+            <div class="group-head">
+              <h2 class="group-label">BACKGROUND</h2>
+              <button type="button" class="reset-btn" data-reset="background" aria-label="Reset background options">${ICON_RESET}</button>
+            </div>
+            <div class="bg-stack">
+              <div class="bg-field">
+                <label class="swatch">
+                  <input type="color" id="bg-color" value="#141414" aria-label="Background color">
+                </label>
+                <input type="text" id="bg-hex" class="bg-hex" value="141414" maxlength="7" spellcheck="false" aria-label="Background hex">
+                <span class="bg-sep" aria-hidden="true"></span>
+                <input type="text" id="bg-opacity" class="bg-opacity" value="100" maxlength="3" inputmode="numeric" aria-label="Background opacity percent">
+                <span class="bg-pct" aria-hidden="true">%</span>
               </div>
 
-              <div class="dual">
-                <div class="field field-grow">
-                  <label class="field-label" for="bg-hex">Background Color</label>
-                  <div class="color-row">
-                    <label class="swatch">
-                      <input type="color" id="bg-color" value="#141414" aria-label="Background color">
-                    </label>
-                    <input type="text" id="bg-hex" class="field-input hex" value="#141414" spellcheck="false" aria-label="Background hex">
-                  </div>
-                </div>
-                <div class="field field-opacity">
-                  <label class="field-label" for="bg-opacity">Opacity</label>
-                  <input type="text" id="bg-opacity" class="field-input opacity" value="100%" inputmode="numeric" aria-label="Background opacity percent">
-                </div>
-              </div>
-
-              <div class="field">
-                <span class="field-label" id="corner-radius-label">Corner Radius</span>
-                <div class="seg-row" id="corner-radius" role="group" aria-labelledby="corner-radius-label">
+              <div class="field field-tight">
+                <span class="opt-label" id="corner-radius-label">Corner Radius (px)</span>
+                <div class="seg-track" id="corner-radius" role="group" aria-labelledby="corner-radius-label">
                   ${CORNER_RADII.map((r) => `<button type="button" class="seg" data-radius="${r}">${r}</button>`).join("")}
                 </div>
               </div>
@@ -1232,35 +1315,21 @@ function init() {
           <div class="divider" role="separator"></div>
 
           <section class="group">
-            <h2 class="group-label">DATA</h2>
-            <div class="stack">
-              <label class="check"><input type="checkbox" id="show-change"><span class="check-text">Loss/Gain</span></label>
-
-              <div class="check-group">
-                <label class="check"><input type="checkbox" id="show-wl"><span class="check-text">Win Loss Record</span></label>
-                <div class="seg-row" id="wl-mode">
-                  <button type="button" class="seg" data-mode="leetify">TOTAL</button>
-                  <button type="button" class="seg" data-mode="live">LIVE SESSION</button>
+            <div class="group-head">
+              <h2 class="group-label">TEXT</h2>
+              <button type="button" class="reset-btn" data-reset="text" aria-label="Reset text options">${ICON_RESET}</button>
+            </div>
+            <div class="text-row">
+              <div class="combo">
+                <div class="combo-box">
+                  <input type="text" id="font-search" class="field-input combo-input" placeholder="Search Google Fonts…" autocomplete="off" spellcheck="false" aria-label="Font">
+                  <span class="combo-caret">${ICON_CARET}</span>
                 </div>
-                <input type="text" id="live-channel" class="field-input" placeholder="Twitch/Youtube/Kick profile link" autocomplete="off" spellcheck="false" hidden>
-                <div class="live-chip" id="live-chip" hidden>
-                  <span class="live-chip-logo" id="live-chip-logo" aria-hidden="true"></span>
-                  <span class="live-chip-name" id="live-chip-name"></span>
-                  <button type="button" class="live-chip-edit" id="live-chip-edit" aria-label="Edit live channel">${ICON_PENCIL}</button>
-                </div>
+                <div class="combo-list" id="font-list" hidden></div>
               </div>
-
-              <div class="check-group">
-                <label class="check"><input type="checkbox" id="show-stats"><span class="check-text">Stats (${STAT_MAX} Max)</span></label>
-                <div class="pill-row" id="stats-pills">${statPillsHtml()}</div>
-              </div>
-
-              <div class="check-group">
-                <label class="check"><input type="checkbox" id="show-history"><span class="check-text">Match History</span></label>
-                <div class="seg-row" id="history-mode" hidden>
-                  <button type="button" class="seg" data-hist="wl">WIN/LOSS</button>
-                  <button type="button" class="seg" data-hist="elo">ELO</button>
-                </div>
+              <div class="select-box">
+                <select id="font-weight" class="field-input select" aria-label="Font weight">${weightOptionsHtml()}</select>
+                <span class="combo-caret">${ICON_CARET}</span>
               </div>
             </div>
           </section>
@@ -1269,8 +1338,8 @@ function init() {
         <div class="setup-foot">
           <img class="foot-logo" src="${brandLogoSrc}" alt="kapKit">
           <div class="foot-legal">
-            <button type="button" class="foot-link" id="open-privacy">Privacy &amp; Cookies</button>
-            <span class="foot-sep" aria-hidden="true">·</span>
+            <button type="button" class="foot-link" id="open-privacy">Privacy Policy</button>
+            <span class="foot-sep" aria-hidden="true"></span>
             <button type="button" class="foot-link" id="open-tos">Terms of Service</button>
           </div>
         </div>
@@ -1301,6 +1370,7 @@ function init() {
 
   bindControls();
   syncControlsFromConfig();
+  bindScrollFades();
   mountConsentUi();
   mountTos();
 
