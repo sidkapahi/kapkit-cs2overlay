@@ -404,6 +404,30 @@ function syncProviderRows() {
   syncHistoryModeUi();
 }
 
+// ---- Sidebar scroll fades ------------------------------------------------
+// Shows the top/bottom fade only while the scrolling body has hidden content in
+// that direction, so nothing is faded at rest or on mobile (where the body
+// doesn't scroll).
+function syncScrollFades() {
+  const setup = document.querySelector<HTMLElement>(".setup");
+  const body = document.querySelector<HTMLElement>(".setup-body");
+  if (!setup || !body) return;
+  const maxScroll = body.scrollHeight - body.clientHeight;
+  setup.classList.toggle("fade-top", body.scrollTop > 1);
+  setup.classList.toggle("fade-bottom", body.scrollTop < maxScroll - 1);
+}
+
+function bindScrollFades() {
+  const body = document.querySelector<HTMLElement>(".setup-body")!;
+  body.addEventListener("scroll", syncScrollFades, { passive: true });
+  // Re-check when the viewport or any section's height changes (advanced panel,
+  // provider rows, window resize).
+  const ro = new ResizeObserver(syncScrollFades);
+  ro.observe(body);
+  for (const child of body.children) ro.observe(child);
+  syncScrollFades();
+}
+
 // ---- Show / close advanced -----------------------------------------------
 function syncAdvancedUi() {
   const panel = document.getElementById("advanced")!;
@@ -1346,6 +1370,7 @@ function init() {
 
   bindControls();
   syncControlsFromConfig();
+  bindScrollFades();
   mountConsentUi();
   mountTos();
 

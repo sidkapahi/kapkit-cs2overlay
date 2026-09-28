@@ -137,6 +137,43 @@ body {
 .setup-head,
 .setup-foot {
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Scroll fades (Figma 183:253): instead of controls hard-cutting against the
+   pinned header/footer, a gradient into the card colour sits over the edge of
+   the scrolling body. They hang off the header/footer so they span only the
+   content column (never the scrollbar), and each shows only while there's
+   more to scroll that way (.fade-top / .fade-bottom, see syncScrollFades). */
+.setup-head::after,
+.setup-foot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+/* 36px = the 40px head/body gap minus the body's 4px focus-ring bleed, so the
+   fade starts exactly where the scrolling content is clipped. */
+.setup-head::after {
+  top: calc(100% + 36px);
+  height: 40px;
+  background: linear-gradient(to bottom, var(--card), rgba(20, 20, 20, 0));
+}
+
+.setup-foot::before {
+  bottom: calc(100% + 36px);
+  height: 70px;
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0), var(--card));
+}
+
+.setup.fade-top .setup-head::after,
+.setup.fade-bottom .setup-foot::before {
+  opacity: 1;
 }
 
 .setup-head {
