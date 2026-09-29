@@ -368,7 +368,9 @@ Wrangler needed. Do steps 1–3 **before** merging the Worker to `main`: the
 "Deploy proxy Workers" action deploys it on merge, and that deploy fails if the
 Queue doesn't exist yet.
 
-1. **Create the Queue**: Storage & databases → **Queues** → **Create queue**.
+1. **Create the Queue**: Queues sits in the **Compute / Workers** section of
+   the sidebar, not Storage & databases (direct link:
+   <https://dash.cloudflare.com/?to=/:account/workers/queues>) → **Create queue**.
    Name it exactly `kapkit-build-events` and keep the default settings.
 
 2. **Subscribe it to the site's builds**: open the new queue → **Subscriptions**
