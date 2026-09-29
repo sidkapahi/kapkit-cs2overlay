@@ -105,13 +105,11 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (isFaceit) {
     // The dial is always shown in FACEIT (there's no badge toggle — it's the
     // rank indicator). Challenger #1/#2/#3 recolour the emblem + position
-    // number. The position pill is filled with the widget's background colour
-    // at full opacity, so it still masks the emblem when the widget is
-    // translucent.
+    // number.
     const dial = faceitDialSvg(data.skillLevel, isChallenger, data.leaderboardPosition);
     const posHtml =
       isChallenger && data.leaderboardPosition != null
-        ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#${data.leaderboardPosition}</span>`
+        ? `<span class="faceit-pos" style="color: ${challengerPosColor(data.leaderboardPosition)}">#${data.leaderboardPosition}</span>`
         : '';
     avatarHtml = `<div class="faceit-rank">${dial}${posHtml}</div>`;
   } else {
