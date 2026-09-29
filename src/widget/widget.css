@@ -235,12 +235,16 @@ body {
   line-height: 1;
 }
 
-.hist-letters .w { color: #6fce72; }
-.hist-letters .l { color: #d45f5f; }
-.hist-letters .t { color: #f5c84b; }
+/* Same green / red as the W/L record (.wl-win / .wl-loss) so the two read as
+   one system. */
+.hist-letters .w { color: #23a827; }
+.hist-letters .l { color: #ff3636; }
+.hist-letters .t { color: #ffe136; }
 
 /* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
-   ELO change, tinted by the outcome. */
+   ELO change, tinted by the outcome. Every chip is the same fixed 52x32 box
+   (Figma 192:38, border included) with the value centred, so a wider change
+   like +100 doesn't make its chip bigger than the rest. */
 .hist-letters.hist-elo {
   gap: 8px;
 }
@@ -248,8 +252,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 52px;
-  padding: 10px;
+  width: 52px;
+  height: 32px;
+  padding: 0 4px;
+  white-space: nowrap;
   border: 2px solid currentColor;
   border-radius: 8px;
   box-sizing: border-box;
@@ -257,7 +263,7 @@ body {
 }
 .hist-letters .hist-chip.w { color: #23a827; background: #082809; }
 .hist-letters .hist-chip.l { color: #ff3636; background: #3d0c0c; }
-.hist-letters .hist-chip.t { color: #f5c84b; background: #3a2f0c; }
+.hist-letters .hist-chip.t { color: #ffe136; background: #3a2f0c; }
 
 .hist-brand {
   display: flex;
@@ -289,24 +295,25 @@ body {
   height: 80px;
 }
 
-/* Challenger leaderboard position (#528) — a rounded red pill that overlaps the
-   bottom of the emblem, dark text (Figma 64:830 / 64:834: bg #e80128, text
-   #121212, px-16/py-12 scaled to the 80px dial). Only rendered for Challenger. */
+/* Challenger leaderboard position (#528) — the rank number in a pill filled
+   with the widget's own background, overlapping the bottom of the emblem so it
+   reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
+   text, 6/8 padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
+   inline by render.ts. Only rendered for Challenger. */
 .faceit-pos {
   position: relative;
   z-index: 1;
-  margin-top: -16px; /* overlap up into the emblem, like the design's mb-[-26px] */
-  /* Sides ~1.3x the top/bottom, matching the Figma's 12/16 padding ratio. */
+  margin-top: -17px;
   padding: 6px 8px;
   border-radius: 999px;
-  background: #e80128;
-  color: #121212;
-  font-size: 14px;
-  /* Extra-bold (900), heavier than the rest of the widget, so the position pill
-     pops. Hardcoded (not the config-driven weight) so it stays extra-bold even
-     if the widget's font weight is set lighter. */
-  font-weight: 900;
+  background: #141414;
+  color: #fb0a33;
+  font-size: 20px;
+  /* Extra-bold (800). Hardcoded (not the config-driven weight) so the rank
+     stays heavy even if the widget's font weight is set lighter. */
+  font-weight: 800;
   line-height: 1;
+  letter-spacing: 0.02em; /* Figma 198:333: 2% */
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
