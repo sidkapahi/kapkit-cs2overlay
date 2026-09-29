@@ -342,6 +342,75 @@ rolling-window W/L). The Twitch and Kick responses are never cached, since live
 status changes; the YouTube Worker caches at the edge for ~60s to protect its
 API quota (see the YouTube section above).
 
+# Discord build notifications (Cloudflare Worker)
+
+Posts a Discord message when a Workers Builds build of the site
+(`kapkit-cs2overlay`) finishes, so you know when a branch preview is ready to
+check out without watching the dashboard:
+
+| Build | Message |
+|---|---|
+| Preview succeeded (any branch but `main`) | 🟢 **Preview ready**, with links to the customizer and the OBS overlay on the branch's preview URL. @mentions you. |
+| Production succeeded (`main`) | 🔵 **Live on production**, with links to `cs2widget.kapkit.ca`. No mention. |
+| Build failed (any branch) | 🔴 **Build failed**, with a link to the build logs. @mentions you. |
+
+Each message also shows the commit (linked to GitHub), author and build time.
+Started and cancelled builds are ignored.
+
+Workers Builds publishes build events to a **Queue** through an Event
+Subscription, and this Worker (`build-notify.js`) consumes that Queue. It has no
+URL of its own.
+
+## Setup
+
+Do steps 1–3 **before** merging the Worker to `main`: the "Deploy proxy
+Workers" action deploys it on merge, and that deploy fails if the Queue doesn't
+exist yet.
+
+1. **Create the Queue**:
+
+   ```bash
+   cd worker
+   npx wrangler queues create kapkit-build-events
+   ```
+
+   (Dashboard: Storage & Databases → Queues → Create queue.)
+
+2. **Subscribe it to the site's builds**: in the dashboard, open Queues →
+   `kapkit-build-events` → **Subscriptions** → **Subscribe to events**. Pick
+   source **Workers Builds**, Worker **kapkit-cs2overlay**, and at least the
+   **Build succeeded** and **Build failed** events.
+
+3. **Let the deploy action manage queue consumers**: the `CLOUDFLARE_API_TOKEN`
+   repository secret needs **Queues: Edit** alongside Workers Scripts: Edit.
+
+4. **Deploy** (or merge to `main` and let the action do it):
+
+   ```bash
+   npx wrangler deploy --config wrangler.notify.toml
+   ```
+
+5. **Add the secrets**:
+
+   ```bash
+   npx wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.notify.toml
+   npx wrangler secret put DISCORD_USER_ID --config wrangler.notify.toml
+   ```
+
+   - `DISCORD_WEBHOOK_URL`: in Discord, Channel Settings → Integrations →
+     Webhooks → New Webhook → Copy Webhook URL.
+   - `DISCORD_USER_ID`: the account to @mention. Turn on Developer Mode
+     (User Settings → Advanced), then right-click your name → Copy User ID.
+     Leave it unset to post without mentions.
+
+Push to any branch to test it. If a message doesn't arrive, check the Worker's
+**Observability** tab for Discord errors.
+
+The preview link is built from the branch name the same way Cloudflare does it
+(`claude/foo-bar` → `claude-foo-bar-kapkit-cs2overlay.sid-kapahi.workers.dev`).
+The constants at the top of `build-notify.js` hold the Worker name, production
+URL and `workers.dev` subdomain; change them there if any of those move.
+
 ---
 
 > **Analytics reverse proxy?** PostHog's "Reverse proxy" health check is handled
