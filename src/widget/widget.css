@@ -144,8 +144,9 @@ body {
   height: 1.2em;
   flex-shrink: 0;
 }
-.rating-diff.positive { color: #5dad60; }
-.rating-diff.negative { color: #d45f5f; }
+/* Same green / red as the W/L record (.wl-win / .wl-loss). */
+.rating-diff.positive { color: #23a827; }
+.rating-diff.negative { color: #ff3636; }
 
 /* ---- Win / loss record --------------------------------------------------- */
 /* Stacked "W 12" / "L 12" rows in plain coloured text — no fill or border
