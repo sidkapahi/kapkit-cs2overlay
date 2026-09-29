@@ -235,8 +235,10 @@ body {
   line-height: 1;
 }
 
-.hist-letters .w { color: #6fce72; }
-.hist-letters .l { color: #d45f5f; }
+/* Same green / red as the W/L record (.wl-win / .wl-loss) so the two read as
+   one system. */
+.hist-letters .w { color: #23a827; }
+.hist-letters .l { color: #ff3636; }
 .hist-letters .t { color: #f5c84b; }
 
 /* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
