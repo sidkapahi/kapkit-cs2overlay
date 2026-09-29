@@ -296,17 +296,17 @@ body {
 }
 
 /* Challenger leaderboard position (#528) — the rank number in a pill filled
-   with the emblem's own dark disc colour (#121212), overlapping the bottom of
-   the emblem so it reads as part of it (Figma 198:332: 20px extra-bold, 2%
-   tracking, #fb0a33 text, 6/8 padding, -17px overlap). The #1/#2/#3 medal text
-   colour is set inline by render.ts. Only rendered for Challenger. */
+   with the widget's own background, overlapping the bottom of the emblem so it
+   reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
+   text, 6/8 padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
+   inline by render.ts. Only rendered for Challenger. */
 .faceit-pos {
   position: relative;
   z-index: 1;
   margin-top: -17px;
   padding: 6px 8px;
   border-radius: 999px;
-  background: #121212;
+  background: #141414;
   color: #fb0a33;
   font-size: 20px;
   /* Extra-bold (800). Hardcoded (not the config-driven weight) so the rank
