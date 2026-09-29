@@ -239,7 +239,7 @@ body {
    one system. */
 .hist-letters .w { color: #23a827; }
 .hist-letters .l { color: #ff3636; }
-.hist-letters .t { color: #f5c84b; }
+.hist-letters .t { color: #ffe136; }
 
 /* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
    ELO change, tinted by the outcome. Every chip is the same fixed 52x32 box
@@ -263,7 +263,7 @@ body {
 }
 .hist-letters .hist-chip.w { color: #23a827; background: #082809; }
 .hist-letters .hist-chip.l { color: #ff3636; background: #3d0c0c; }
-.hist-letters .hist-chip.t { color: #f5c84b; background: #3a2f0c; }
+.hist-letters .hist-chip.t { color: #ffe136; background: #3a2f0c; }
 
 .hist-brand {
   display: flex;
