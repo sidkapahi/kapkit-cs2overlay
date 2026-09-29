@@ -43,10 +43,18 @@ const CHALLENGER_TOP: Record<number, string> = {
 };
 
 // The Challenger colour for a leaderboard position — #1/#2/#3 get medal colours,
-// everyone else the default red. Used for both the emblem fill and the position
-// pill background.
+// everyone else the default red. Used for the emblem fill and the ELO text.
 export function challengerColor(position: number | undefined): string {
   return (position != null && CHALLENGER_TOP[position]) || CHALLENGER_DEFAULT;
+}
+
+// The Challenger position number's text colour (the `#528` under the emblem):
+// #1/#2/#3 keep their medal colours; everyone else gets a slightly brighter red
+// than the emblem so the number stands out against it (Figma 198:333).
+const CHALLENGER_POS_DEFAULT = '#fb0a33';
+
+export function challengerPosColor(position: number | undefined): string {
+  return (position != null && CHALLENGER_TOP[position]) || CHALLENGER_POS_DEFAULT;
 }
 
 // Each level's tier colour, matching the colour baked into its dial art

@@ -293,23 +293,23 @@ body {
   height: 80px;
 }
 
-/* Challenger leaderboard position (#528) — a rounded red pill that overlaps the
-   bottom of the emblem, dark text (Figma 64:830 / 64:834: bg #e80128, text
-   #121212, px-16/py-12 scaled to the 80px dial). Only rendered for Challenger. */
+/* Challenger leaderboard position (#528) — the rank number in a pill filled
+   with the widget's own background, overlapping the bottom of the emblem so it
+   reads as cut out of it (Figma 198:332: 20px extra-bold, #fb0a33 text, 6/8
+   padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
+   inline by render.ts. Only rendered for Challenger. */
 .faceit-pos {
   position: relative;
   z-index: 1;
-  margin-top: -16px; /* overlap up into the emblem, like the design's mb-[-26px] */
-  /* Sides ~1.3x the top/bottom, matching the Figma's 12/16 padding ratio. */
+  margin-top: -17px;
   padding: 6px 8px;
   border-radius: 999px;
-  background: #e80128;
-  color: #121212;
-  font-size: 14px;
-  /* Extra-bold (900), heavier than the rest of the widget, so the position pill
-     pops. Hardcoded (not the config-driven weight) so it stays extra-bold even
-     if the widget's font weight is set lighter. */
-  font-weight: 900;
+  background: #141414;
+  color: #fb0a33;
+  font-size: 20px;
+  /* Extra-bold (800). Hardcoded (not the config-driven weight) so the rank
+     stays heavy even if the widget's font weight is set lighter. */
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
