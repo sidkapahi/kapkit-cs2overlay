@@ -297,8 +297,8 @@ body {
 
 /* Challenger leaderboard position (#528) — the rank number in a pill filled
    with the widget's own background, overlapping the bottom of the emblem so it
-   reads as cut out of it (Figma 198:332: 20px extra-bold, #fb0a33 text, 6/8
-   padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
+   reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
+   text, 6/8 padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
    inline by render.ts. Only rendered for Challenger. */
 .faceit-pos {
   position: relative;
@@ -313,6 +313,7 @@ body {
      stays heavy even if the widget's font weight is set lighter. */
   font-weight: 800;
   line-height: 1;
+  letter-spacing: 0.02em; /* Figma 198:333: 2% */
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
