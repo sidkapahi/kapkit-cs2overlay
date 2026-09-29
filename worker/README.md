@@ -361,42 +361,35 @@ Workers Builds publishes build events to a **Queue** through an Event
 Subscription, and this Worker (`build-notify.js`) consumes that Queue. It has no
 URL of its own.
 
-## Setup
+## Setup (Cloudflare dashboard)
 
-Do steps 1–3 **before** merging the Worker to `main`: the "Deploy proxy
-Workers" action deploys it on merge, and that deploy fails if the Queue doesn't
-exist yet.
+Everything here is done in the Cloudflare dashboard, Discord and GitHub; no
+Wrangler needed. Do steps 1–3 **before** merging the Worker to `main`: the
+"Deploy proxy Workers" action deploys it on merge, and that deploy fails if the
+Queue doesn't exist yet.
 
-1. **Create the Queue**:
+1. **Create the Queue**: Storage & databases → **Queues** → **Create queue**.
+   Name it exactly `kapkit-build-events` and keep the default settings.
 
-   ```bash
-   cd worker
-   npx wrangler queues create kapkit-build-events
-   ```
+2. **Subscribe it to the site's builds**: open the new queue → **Subscriptions**
+   tab → **Subscribe to events**. Source **Workers Builds**, Worker
+   **kapkit-cs2overlay**, and tick at least **Build succeeded** and **Build
+   failed**. Save.
 
-   (Dashboard: Storage & Databases → Queues → Create queue.)
+3. **Give the deploy action access to Queues**: profile icon (top right) →
+   **Profile** → **API Tokens** → the token used for the `CLOUDFLARE_API_TOKEN`
+   GitHub secret → **Edit** → **Add more** → *Account* · *Queues* · *Edit* →
+   **Continue to summary** → **Update token**. Editing permissions keeps the same
+   token value, so the GitHub secret doesn't change.
 
-2. **Subscribe it to the site's builds**: in the dashboard, open Queues →
-   `kapkit-build-events` → **Subscriptions** → **Subscribe to events**. Pick
-   source **Workers Builds**, Worker **kapkit-cs2overlay**, and at least the
-   **Build succeeded** and **Build failed** events.
+4. **Merge the pull request** on GitHub. The **Actions** tab should show
+   "Deploy proxy Workers" deploying `wrangler.notify.toml`, and a `build-notify`
+   Worker appears under Workers & Pages. The queue's **Consumers** tab should
+   list it.
 
-3. **Let the deploy action manage queue consumers**: the `CLOUDFLARE_API_TOKEN`
-   repository secret needs **Queues: Edit** alongside Workers Scripts: Edit.
-
-4. **Deploy** (or merge to `main` and let the action do it):
-
-   ```bash
-   npx wrangler deploy --config wrangler.notify.toml
-   ```
-
-5. **Add the secrets**:
-
-   ```bash
-   npx wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.notify.toml
-   npx wrangler secret put DISCORD_USER_ID --config wrangler.notify.toml
-   ```
-
+5. **Add the secrets**: Workers & Pages → **build-notify** → **Settings** →
+   **Variables and Secrets** → **Add**. Set **Type** to **Secret** (a plain
+   variable would be wiped by the next deploy), then **Deploy**:
    - `DISCORD_WEBHOOK_URL`: in Discord, Channel Settings → Integrations →
      Webhooks → New Webhook → Copy Webhook URL.
    - `DISCORD_USER_ID`: the account to @mention. Turn on Developer Mode
