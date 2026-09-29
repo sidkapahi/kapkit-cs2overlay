@@ -344,9 +344,10 @@ API quota (see the YouTube section above).
 
 # Discord build notifications (Cloudflare Worker)
 
-Posts a Discord message when a Workers Builds build of the site
-(`kapkit-cs2overlay`) finishes, so you know when a branch preview is ready to
-check out without watching the dashboard:
+Posts a Discord message when a Workers Builds build finishes, so you know when
+a branch preview is ready to check out without watching the dashboard. It starts
+with this site (`kapkit-cs2overlay`) and can cover your other Workers too (see
+[Adding another project](#adding-another-project)):
 
 | Build | Message |
 |---|---|
@@ -401,10 +402,22 @@ Queue doesn't exist yet.
 Push to any branch to test it. If a message doesn't arrive, check the Worker's
 **Observability** tab for Discord errors.
 
-The preview link is built from the branch name the same way Cloudflare does it
-(`claude/foo-bar` → `claude-foo-bar-kapkit-cs2overlay.sid-kapahi.workers.dev`).
-The constants at the top of `build-notify.js` hold the Worker name, production
-URL and `workers.dev` subdomain; change them there if any of those move.
+## Adding another project
+
+The notifier works for any Worker on the account that deploys with Workers
+Builds (connected to a GitHub repo). To get messages for another project:
+
+1. Open Compute → **Queues** → `kapkit-build-events` → **Subscriptions** →
+   **Subscribe to events**, and add **Workers Builds** for that Worker with
+   **Build succeeded** and **Build failed**.
+2. That's it. Messages show the Worker name as the project and link to its
+   `workers.dev` URLs.
+3. *Optional:* add an entry to `PROJECTS` at the top of `build-notify.js` for a
+   nicer name, its custom domain, a different production branch, or extra links
+   (like the CS2 overlay's `/widget/` link).
+
+Preview links are built from the branch name the same way Cloudflare does it
+(`claude/foo-bar` → `claude-foo-bar-<worker>.sid-kapahi.workers.dev`).
 
 ---
 

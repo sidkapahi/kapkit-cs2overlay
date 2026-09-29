@@ -1,31 +1,48 @@
 // Cloudflare Worker: Discord build notifications
 //
-// Workers Builds publishes an event to a Queue whenever a build of the site
-// Worker (kapkit-cs2overlay) starts, succeeds, fails or is cancelled. This
-// Worker consumes that Queue and posts a Discord message for the ones worth
-// knowing about:
-//   • preview build succeeded (any branch but main) → green, links + @mention
-//   • production build succeeded (main)             → blue, links, no mention
-//   • build failed (any branch)                     → red, logs link + @mention
+// Workers Builds publishes an event to a Queue whenever a build of a subscribed
+// Worker starts, succeeds, fails or is cancelled. This Worker consumes that
+// Queue and posts a Discord message for the ones worth knowing about:
+//   • preview build succeeded (non-production branch) → green, links + @mention
+//   • production build succeeded                      → blue, links, no mention
+//   • build failed (any branch)                       → red, logs link + @mention
 // Started / cancelled builds are ignored.
 //
-// It has no fetch handler — nothing calls it over HTTP; the Queue invokes it.
+// It works for any Worker on the account: to add a project, subscribe the Queue
+// to that Worker's builds in the dashboard. Optionally give it an entry in
+// PROJECTS below for a nicer name, its custom domain and extra links.
 //
-// Setup (see worker/README.md for details):
-//   1. Create the Queue and subscribe it to the site Worker's build events.
-//   2. Deploy this Worker:
-//        wrangler deploy --config wrangler.notify.toml
-//   3. Add the secrets:
-//        wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.notify.toml
-//        wrangler secret put DISCORD_USER_ID --config wrangler.notify.toml
+// It has no fetch handler — nothing calls it over HTTP; the Queue invokes it.
+// Setup steps are in worker/README.md.
 
-// The site Worker whose builds we report on; events for any other Worker on the
-// account are acked and dropped.
-const SITE_WORKER = 'kapkit-cs2overlay';
-const PRODUCTION_BRANCH = 'main';
-const PRODUCTION_URL = 'https://cs2widget.kapkit.ca';
-// Branch previews live at <branch-slug>-<worker>.<subdomain>.workers.dev.
+// Every Worker on the account is served from <worker>.<subdomain>, and branch
+// previews from <branch-slug>-<worker>.<subdomain>.
 const WORKERS_DEV_SUBDOMAIN = 'sid-kapahi.workers.dev';
+
+// Per-project extras, keyed by Worker name. Everything is optional; a Worker
+// with no entry still gets messages, with its workers.dev URLs and branch main.
+//   name             — shown in the footer (default: the Worker name)
+//   productionUrl    — custom domain (default: https://<worker>.<subdomain>)
+//   productionBranch — default 'main'
+//   links            — extra pages linked alongside the root: [label, path]
+const PROJECTS = {
+  'kapkit-cs2overlay': {
+    name: 'CS2 overlay',
+    productionUrl: 'https://cs2widget.kapkit.ca',
+    links: [['🎮 OBS overlay', '/widget/']],
+  },
+};
+
+function projectFor(workerName) {
+  const p = PROJECTS[workerName] || {};
+  return {
+    worker: workerName,
+    name: p.name || workerName,
+    productionUrl: p.productionUrl || `https://${workerName}.${WORKERS_DEV_SUBDOMAIN}`,
+    productionBranch: p.productionBranch || 'main',
+    links: p.links || [],
+  };
+}
 
 const COLORS = {
   preview: 0x2ecc71, // green
@@ -37,8 +54,8 @@ const COLORS = {
 // replacing anything outside [a-z0-9] with '-' (e.g. claude/youthful-gauss-9f3jia
 // → claude-youthful-gauss-9f3jia). A DNS label is at most 63 characters, so the
 // slug is capped to leave room for "-<worker>".
-function previewSlug(branch) {
-  const max = 63 - SITE_WORKER.length - 1;
+function previewSlug(branch, worker) {
+  const max = 63 - worker.length - 1;
   return branch
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -47,8 +64,8 @@ function previewSlug(branch) {
     .replace(/-+$/, '');
 }
 
-function previewUrl(branch) {
-  return `https://${previewSlug(branch)}-${SITE_WORKER}.${WORKERS_DEV_SUBDOMAIN}`;
+function previewUrl(branch, worker) {
+  return `https://${previewSlug(branch, worker)}-${worker}.${WORKERS_DEV_SUBDOMAIN}`;
 }
 
 // "1m 12s" / "34s" between two ISO timestamps, or null if either is missing.
@@ -78,28 +95,31 @@ function commitUrl(meta) {
   return `https://github.com/${meta.providerAccountName}/${meta.repoName}/commit/${meta.commitHash}`;
 }
 
-function buildLogsUrl(accountId, buildUuid) {
-  return `https://dash.cloudflare.com/${accountId}/workers/services/view/${SITE_WORKER}/production/builds/${buildUuid}`;
+function buildLogsUrl(accountId, worker, buildUuid) {
+  return `https://dash.cloudflare.com/${accountId}/workers/services/view/${worker}/production/builds/${buildUuid}`;
 }
 
 // Turns one Workers Builds event into a Discord webhook body, or null when the
 // event isn't one we notify on.
 export function buildMessage(event, userId) {
   const kind = event?.type?.split('.').pop(); // started | succeeded | failed | canceled
-  if (event?.source?.workerName !== SITE_WORKER) return null;
+  const workerName = event?.source?.workerName;
+  if (!workerName) return null;
   if (kind !== 'succeeded' && kind !== 'failed') return null;
 
+  const project = projectFor(workerName);
   const payload = event.payload || {};
   const meta = payload.buildTriggerMetadata || {};
   const branch = meta.branch || 'unknown';
-  const isProduction = branch === PRODUCTION_BRANCH;
+  const isProduction = branch === project.productionBranch;
   const failed = kind === 'failed';
 
-  const siteUrl = isProduction ? PRODUCTION_URL : previewUrl(branch);
-  const logsUrl = buildLogsUrl(event.metadata?.accountId, payload.buildUuid);
+  const siteUrl = isProduction ? project.productionUrl : previewUrl(branch, workerName);
+  const logsUrl = buildLogsUrl(event.metadata?.accountId, workerName, payload.buildUuid);
   const took = duration(payload.runningAt || payload.createdAt, payload.stoppedAt);
   const shortHash = (meta.commitHash || '').slice(0, 7);
   const commitLink = commitUrl(meta);
+  const extraLinks = project.links.map(([label, path]) => `${label} — [Open →](${siteUrl}${path})`);
 
   let title, color, links;
   if (failed) {
@@ -109,11 +129,11 @@ export function buildMessage(event, userId) {
   } else if (isProduction) {
     title = `🔵  Live on production · ${branch}`;
     color = COLORS.production;
-    links = `🔗 [cs2widget.kapkit.ca](${siteUrl}/)   🎮 [OBS overlay](${siteUrl}/widget/)`;
+    links = [`🔗 [${new URL(siteUrl).host}](${siteUrl}/)`, ...extraLinks].join('\n');
   } else {
     title = `🟢  Preview ready · ${branch}`;
     color = COLORS.preview;
-    links = `🔗 **Customizer** — [Open preview →](${siteUrl}/)\n🎮 **OBS overlay** — [Open widget →](${siteUrl}/widget/)`;
+    links = [`🔗 **Site** — [Open preview →](${siteUrl}/)`, ...extraLinks].join('\n');
   }
 
   const fields = [];
@@ -129,12 +149,13 @@ export function buildMessage(event, userId) {
 
   const message = firstLine(meta.commitMessage);
   const embed = {
+    author: { name: project.name },
     title,
     url: failed ? logsUrl : `${siteUrl}/`,
     description: message ? `${message}\n\n${links}` : links,
     color,
     fields,
-    footer: { text: `${SITE_WORKER} · Workers Builds` },
+    footer: { text: 'Workers Builds' },
     timestamp: payload.stoppedAt || event.metadata?.eventTimestamp || undefined,
   };
 
