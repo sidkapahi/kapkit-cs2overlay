@@ -342,6 +342,83 @@ rolling-window W/L). The Twitch and Kick responses are never cached, since live
 status changes; the YouTube Worker caches at the edge for ~60s to protect its
 API quota (see the YouTube section above).
 
+# Discord build notifications (Cloudflare Worker)
+
+Posts a Discord message when a Workers Builds build finishes, so you know when
+a branch preview is ready to check out without watching the dashboard. It starts
+with this site (`kapkit-cs2overlay`) and can cover your other Workers too (see
+[Adding another project](#adding-another-project)):
+
+| Build | Message |
+|---|---|
+| Preview succeeded (any branch but `main`) | 🟢 **Preview ready**, with links to the customizer and the OBS overlay on the branch's preview URL. @mentions you. |
+| Production succeeded (`main`) | 🔵 **Live on production**, with links to `cs2widget.kapkit.ca`. No mention. |
+| Build failed (any branch) | 🔴 **Build failed**, with a link to the build logs. @mentions you. |
+
+Each message also shows the commit (linked to GitHub), author and build time.
+Started and cancelled builds are ignored.
+
+Workers Builds publishes build events to a **Queue** through an Event
+Subscription, and this Worker (`build-notify.js`) consumes that Queue. It has no
+URL of its own.
+
+## Setup (Cloudflare dashboard)
+
+Everything here is done in the Cloudflare dashboard, Discord and GitHub; no
+Wrangler needed. Do steps 1–3 **before** merging the Worker to `main`: the
+"Deploy proxy Workers" action deploys it on merge, and that deploy fails if the
+Queue doesn't exist yet.
+
+1. **Create the Queue**: Queues sits in the **Compute / Workers** section of
+   the sidebar, not Storage & databases (direct link:
+   <https://dash.cloudflare.com/?to=/:account/workers/queues>) → **Create queue**.
+   Name it exactly `kapkit-build-events` and keep the default settings.
+
+2. **Subscribe it to the site's builds**: open the new queue → **Subscriptions**
+   tab → **Subscribe to events**. Source **Workers Builds**, Worker
+   **kapkit-cs2overlay**, and tick at least **Build succeeded** and **Build
+   failed**. Save.
+
+3. **Give the deploy action access to Queues**: profile icon (top right) →
+   **Profile** → **API Tokens** → the token used for the `CLOUDFLARE_API_TOKEN`
+   GitHub secret → **Edit** → **Add more** → *Account* · *Queues* · *Edit* →
+   **Continue to summary** → **Update token**. Editing permissions keeps the same
+   token value, so the GitHub secret doesn't change.
+
+4. **Merge the pull request** on GitHub. The **Actions** tab should show
+   "Deploy proxy Workers" deploying `wrangler.notify.toml`, and a `build-notify`
+   Worker appears under Workers & Pages. The queue's **Consumers** tab should
+   list it.
+
+5. **Add the secrets**: Workers & Pages → **build-notify** → **Settings** →
+   **Variables and Secrets** → **Add**. Set **Type** to **Secret** (a plain
+   variable would be wiped by the next deploy), then **Deploy**:
+   - `DISCORD_WEBHOOK_URL`: in Discord, Channel Settings → Integrations →
+     Webhooks → New Webhook → Copy Webhook URL.
+   - `DISCORD_USER_ID`: the account to @mention. Turn on Developer Mode
+     (User Settings → Advanced), then right-click your name → Copy User ID.
+     Leave it unset to post without mentions.
+
+Push to any branch to test it. If a message doesn't arrive, check the Worker's
+**Observability** tab for Discord errors.
+
+## Adding another project
+
+The notifier works for any Worker on the account that deploys with Workers
+Builds (connected to a GitHub repo). To get messages for another project:
+
+1. Open Compute → **Queues** → `kapkit-build-events` → **Subscriptions** →
+   **Subscribe to events**, and add **Workers Builds** for that Worker with
+   **Build succeeded** and **Build failed**.
+2. That's it. Messages show the Worker name as the project and link to its
+   `workers.dev` URLs.
+3. *Optional:* add an entry to `PROJECTS` at the top of `build-notify.js` for a
+   nicer name, its custom domain, a different production branch, or extra links
+   (like the CS2 overlay's `/widget/` link).
+
+Preview links are built from the branch name the same way Cloudflare does it
+(`claude/foo-bar` → `claude-foo-bar-<worker>.sid-kapahi.workers.dev`).
+
 ---
 
 > **Analytics reverse proxy?** PostHog's "Reverse proxy" health check is handled
