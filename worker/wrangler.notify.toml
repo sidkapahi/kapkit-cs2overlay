@@ -3,7 +3,7 @@
 # Create the queue first (the deploy fails if it doesn't exist):
 #            wrangler queues create kapkit-build-events
 # Deploy:    wrangler deploy --config wrangler.notify.toml
-# Add creds: wrangler secret put DISCORD_WEBHOOK_URL --config wrangler.notify.toml
+# Add creds: wrangler secret put DISCORD_WEBHOOK_CS2 --config wrangler.notify.toml  (one per project channel)
 #            wrangler secret put DISCORD_USER_ID --config wrangler.notify.toml
 #            (never commit the secrets)
 

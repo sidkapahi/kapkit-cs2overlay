@@ -351,11 +351,25 @@ with this site (`kapkit-cs2overlay`) and can cover your other Workers too (see
 
 | Build | Message |
 |---|---|
-| Preview succeeded (any branch but `main`) | 🟢 **Preview ready**, with links to the customizer and the OBS overlay on the branch's preview URL. @mentions you. |
-| Production succeeded (`main`) | 🔵 **Live on production**, with links to `cs2widget.kapkit.ca`. No mention. |
-| Build failed (any branch) | 🔴 **Build failed**, with a link to the build logs. @mentions you. |
+| Preview succeeded (any branch but `main`) | Green, status **Preview Ready**, **▶️ Preview** and **🎮 OBS overlay** buttons pointing at the branch's preview URL. @mentions you. |
+| Production succeeded (`main`) | Blue, status **Live**, a **▶️ Live site** button for `cs2widget.kapkit.ca`. No mention. |
+| Build failed (any branch) | Red, status **Build Failed**, a **📄 View logs** button. @mentions you. |
 
-Each message also shows the commit (linked to GitHub), author and build time.
+Each message is an embed:
+
+- **Author line**: the project name and icon, linking to the production site.
+- **Title**: the commit's first line, linking to the preview (or the logs on a
+  failure). **Description**: the rest of the commit message, minus trailers
+  like `Co-Authored-By:`. With squash merges, the first line is the PR title.
+- **Fields**: Status · Branch (linked to GitHub) · Release · Logs.
+  **Release** is `version` from `package.json` at the built commit, shown as
+  `v1.0.5`. It's left out while the version is `0.0.0` or the repo is private.
+- **Image**: the project's preview image. Discord doesn't allow an embed image
+  to be a link (clicking it only enlarges it), so the title and the **▶️
+  Preview** button link to the preview.
+- **Footer**: `build-notify v1.2  |  kapKit` with a Cloudflare icon, and the
+  build time.
+
 Started and cancelled builds are ignored.
 
 Workers Builds publishes build events to a **Queue** through an Event
@@ -393,8 +407,12 @@ Queue doesn't exist yet.
 5. **Add the secrets**: Workers & Pages → **build-notify** → **Settings** →
    **Variables and Secrets** → **Add**. Set **Type** to **Secret** (a plain
    variable would be wiped by the next deploy), then **Deploy**:
-   - `DISCORD_WEBHOOK_URL`: in Discord, Channel Settings → Integrations →
-     Webhooks → New Webhook → Copy Webhook URL.
+   - `DISCORD_WEBHOOK_CS2`: the webhook for the CS2 overlay's channel. In
+     Discord, Channel Settings → Integrations → Webhooks → New Webhook → Copy
+     Webhook URL. The webhook's name and avatar there are what the "bot"
+     shows as.
+   - `DISCORD_WEBHOOK_URL` *(optional)*: a fallback channel for any project
+     without its own webhook secret.
    - `DISCORD_USER_ID`: the account to @mention. Turn on Developer Mode
      (User Settings → Advanced), then right-click your name → Copy User ID.
      Leave it unset to post without mentions.
@@ -405,16 +423,43 @@ Push to any branch to test it. If a message doesn't arrive, check the Worker's
 ## Adding another project
 
 The notifier works for any Worker on the account that deploys with Workers
-Builds (connected to a GitHub repo). To get messages for another project:
+Builds (connected to a GitHub repo). One `build-notify` Worker serves them all,
+and each project can post to its own channel with its own look.
 
-1. Open Compute → **Queues** → `kapkit-build-events` → **Subscriptions** →
-   **Subscribe to events**, and add **Workers Builds** for that Worker with
-   **Build succeeded** and **Build failed**.
-2. That's it. Messages show the Worker name as the project and link to its
-   `workers.dev` URLs.
-3. *Optional:* add an entry to `PROJECTS` at the top of `build-notify.js` for a
-   nicer name, its custom domain, a different production branch, or extra links
-   (like the CS2 overlay's `/widget/` link).
+1. **Subscribe the queue**: Compute → **Queues** → `kapkit-build-events` →
+   **Subscriptions** → **Subscribe to events**, and add **Workers Builds** for
+   that Worker with **Build succeeded** and **Build failed**.
+2. **Give it a channel**: in Discord, create a webhook in the project's channel
+   (Channel Settings → Integrations → Webhooks → New Webhook). Name it and set
+   its avatar there. Several channels can use webhooks with the same name and
+   avatar, so it looks like one bot everywhere. Then in Cloudflare, go to
+   Workers & Pages → **build-notify** → **Settings** → **Variables and
+   Secrets** → **Add**, choose **Secret**, and name it e.g.
+   `DISCORD_WEBHOOK_MYAPP`.
+3. **Add an entry to `PROJECTS`** at the top of `build-notify.js`. Every key is
+   optional:
+
+   ```js
+   'my-app-worker': {
+     name: 'My App',                           // author line
+     icon: 'https://myapp.kapkit.ca/favicon.png',
+     image: 'https://…/my-app-preview.png',   // big image in the embed
+     productionUrl: 'https://myapp.kapkit.ca',
+     productionBranch: 'main',
+     webhook: 'DISCORD_WEBHOOK_MYAPP',         // secret name from step 2
+     username: 'kapKit Builds',                // override the webhook's name…
+     avatar: 'https://…/bot.png',              // …and avatar for this project
+     color: { preview: 0x4eb754 },             // preview / production / failed
+     footer: 'build-notify v1.2  |  kapKit',   // footer / footerIcon
+     buttons: [['🎮 OBS overlay', '/widget/']], // extra buttons: [label, path]
+   },
+   ```
+
+   Merge it to `main`, and the "Deploy proxy Workers" action redeploys the
+   notifier. A Worker with no entry still gets messages: it uses its Worker
+   name, its `workers.dev` URLs and the `DISCORD_WEBHOOK_URL` channel.
+4. *Optional:* set a `version` in that project's `package.json` for the
+   **Release** field.
 
 Preview links are built from the branch name the same way Cloudflare does it
 (`claude/foo-bar` → `claude-foo-bar-<worker>.sid-kapahi.workers.dev`).
