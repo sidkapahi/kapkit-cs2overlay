@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/header.png?v=2" alt="CS2 Stats Overlay" width="100%" />
+<img src="assets/header.png?v=3" alt="CS2 Stats Overlay" width="100%" />
 
 # CS2 Stats Overlay
 
