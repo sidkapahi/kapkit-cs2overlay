@@ -2,8 +2,10 @@ import {
   CORNER_RADII,
   DEFAULT_CONFIG,
   DEFAULT_STATS_BY_PROVIDER,
+  HISTORY_FALLBACK_RADIUS,
   PROVIDER_STATS,
   STAT_MAX,
+  radiusAllowed,
   type CornerRadius,
   type LivePlatform,
   type Provider,
@@ -216,6 +218,14 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
     live = normalizeLiveChannel('twitch', params.get('twitch') ?? '');
   }
 
+  // Old links may pair Match History with the 100 pill preset, which the
+  // customizer no longer allows; render those at the fallback radius.
+  const showMatchHistory = params.get('history') === '1';
+  let cornerRadius: CornerRadius = (CORNER_RADII as readonly number[]).includes(radius)
+    ? (radius as CornerRadius)
+    : DEFAULT_CONFIG.cornerRadius;
+  if (!radiusAllowed(cornerRadius, showMatchHistory)) cornerRadius = HISTORY_FALLBACK_RADIUS;
+
   return {
     provider,
     steamId: params.get('steamId') ?? DEFAULT_CONFIG.steamId,
@@ -229,7 +239,7 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
     showWinLoss: params.get('wl') !== '0',
     showStats,
     stats,
-    showMatchHistory: params.get('history') === '1',
+    showMatchHistory,
     historyMode: params.get('hist') === 'elo' ? 'elo' : 'wl',
     matchCount: parseInt(params.get('matchCount') ?? String(DEFAULT_CONFIG.matchCount), 10),
     refreshInterval: parseInt(params.get('refresh') ?? String(DEFAULT_CONFIG.refreshInterval), 10),
@@ -238,8 +248,6 @@ export function paramsToConfig(params: URLSearchParams): WidgetConfig {
       Number.isFinite(fw) && fw >= 100 && fw <= 900 ? fw : DEFAULT_CONFIG.fontWeight,
     bgColor: bg ? `#${bg.replace(/^#/, '')}` : DEFAULT_CONFIG.bgColor,
     bgOpacity: bgo != null ? Math.max(0, Math.min(100, parseInt(bgo, 10) || 0)) : DEFAULT_CONFIG.bgOpacity,
-    cornerRadius: (CORNER_RADII as readonly number[]).includes(radius)
-      ? (radius as CornerRadius)
-      : DEFAULT_CONFIG.cornerRadius,
+    cornerRadius,
   };
 }

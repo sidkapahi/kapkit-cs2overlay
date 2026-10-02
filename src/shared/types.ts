@@ -182,6 +182,14 @@ export type HistoryMode = 'wl' | 'elo';
 export const CORNER_RADII = [0, 20, 32, 100] as const;
 export type CornerRadius = (typeof CORNER_RADII)[number];
 
+// The 100 pill preset isn't offered with Match History on (the taller layout
+// doesn't suit a full pill); configs that combine them render at this instead.
+export const HISTORY_FALLBACK_RADIUS: CornerRadius = 32;
+
+export function radiusAllowed(radius: CornerRadius, showMatchHistory: boolean): boolean {
+  return !(showMatchHistory && radius === 100);
+}
+
 export const DEFAULT_CONFIG: WidgetConfig = {
   provider: 'leetify',
   steamId: '',
