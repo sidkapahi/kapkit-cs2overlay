@@ -58,9 +58,24 @@ body {
 }
 
 .rating-line {
+  display: grid;
+  align-items: center;
+}
+/* The rating + change, and its invisible "ghost" twin holding the widest values
+   the line is sized for (see ratingGhostRow in render.ts). Both sit in the same
+   grid cell, so the line is as wide as the larger of the two and the widget
+   doesn't resize as the numbers change. */
+.rating-row {
+  grid-area: 1 / 1;
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.rating-ghost {
+  visibility: hidden;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
 /* Plain (no-badge) rating — rank-coloured number. Also the FACEIT ELO. Follows
@@ -182,7 +197,14 @@ body {
   min-width: 22px;
   text-align: right;
 }
-.wl-count { justify-self: end; }
+/* Room for two digits, so the record doesn't widen the widget going from 9 to
+   10 (JetBrains Mono is monospaced, so 2ch is exactly two digits). Left-aligned
+   so a single digit still sits right next to its letter. */
+.wl-count {
+  justify-self: end;
+  min-width: 2ch;
+  text-align: left;
+}
 
 .wl-win  { color: #23a827; }
 .wl-loss { color: #ff3636; }
@@ -211,6 +233,14 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
+
+/* Each value reserves room for its widest normal reading (two digits; three
+   for ADR and win % which can hit 100+; K/D is always "0.00"), so a stat going
+   from 9 to 10 doesn't resize the widget. Tabular figures make every digit 1ch. */
+.stat-val { min-width: 2ch; text-align: center; }
+.stat-kd .stat-val { min-width: 4ch; }
+.stat-adr .stat-val,
+.stat-winpct .stat-val { min-width: 3ch; }
 
 .stat-lbl {
   font-size: 14px;
@@ -243,6 +273,12 @@ body {
 .hist-letters .w { color: #23a827; }
 .hist-letters .l { color: #ff3636; }
 .hist-letters .t { color: #ffe136; }
+/* W, L and T letters take the same slot (about a W's width), so the strip keeps
+   its length whatever the results are. */
+.hist-letters:not(.hist-elo) > span {
+  min-width: 1em;
+  text-align: center;
+}
 
 /* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
    ELO change, tinted by the outcome. Every chip is the same fixed 52x32 box
@@ -286,6 +322,7 @@ body {
    left slot where Premier shows the avatar. The level number and colour are
    baked into the SVG art. */
 .faceit-rank {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -303,10 +340,14 @@ body {
    reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
    text, 6/8 padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
    inline by render.ts. Only rendered for Challenger. */
+/* Overlaps the bottom of the dial. Positioned out of flow so reaching
+   Challenger (or dropping out of it) doesn't change the widget's height. */
 .faceit-pos {
-  position: relative;
+  position: absolute;
   z-index: 1;
-  margin-top: -17px;
+  top: calc(100% - 17px);
+  left: 50%;
+  transform: translateX(-50%);
   padding: 6px 8px;
   border-radius: 999px;
   background: #141414;
@@ -372,7 +413,7 @@ number-flow {
   .intro .widget { animation: w-in-card 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .intro .avatar,
   .intro .faceit-rank svg { animation: w-in-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms both; }
-  .intro .faceit-pos { animation: w-in-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 350ms both; }
+  .intro .faceit-pos { animation: w-in-pos 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 350ms both; }
   .intro .name { animation: w-in-left 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms both; }
   .intro .badge-svg { animation: w-in-wipe 550ms cubic-bezier(0.65, 0, 0.35, 1) 150ms both; }
   .intro .stat-lbl { animation: w-in-up 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 250ms both; }
@@ -398,6 +439,7 @@ number-flow {
 }
 @keyframes w-in-card { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
 @keyframes w-in-pop  { from { opacity: 0; transform: scale(0.5); } }
+@keyframes w-in-pos  { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
 @keyframes w-in-left { from { opacity: 0; transform: translateX(-10px); } }
 @keyframes w-in-up   { from { opacity: 0; transform: translateY(8px); } }
 @keyframes w-in-fade { from { opacity: 0; } }

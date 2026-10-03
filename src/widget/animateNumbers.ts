@@ -43,7 +43,10 @@ export function createNumberAnimator() {
   let prevDiffColor = '';
 
   function animateDiff(root: HTMLElement) {
-    const diff = root.querySelector<HTMLElement>('.rating-diff');
+    // Skip the invisible size placeholder (.rating-ghost in render.ts).
+    const diff = [...root.querySelectorAll<HTMLElement>('.rating-diff')].find(
+      (el) => !el.closest('.rating-ghost'),
+    );
     if (!diff) {
       // Hidden (no change, or turned off): the next one spins in fresh.
       prevArrowDeg = undefined;

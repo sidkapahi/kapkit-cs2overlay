@@ -70,6 +70,11 @@ function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' 
   return ` data-flow="${key}" data-flow-value="${value}" data-flow-fmt="${fmt}"`;
 }
 
+// Widest values the rating line reserves space for (see ratingGhostRow in
+// renderWidget). Zeros, set in tabular figures, are as wide as any digit.
+const RATING_GHOST = '00,000';
+const DIFF_GHOST = '000';
+
 // Builds the full widget markup for a config + data pair. Shared by the live
 // widget and the customizer preview so both stay pixel-identical.
 export function renderWidget(config: WidgetConfig, data: PremierData): string {
@@ -87,15 +92,21 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   const ratingText = formatRating(data.rating);
   const ratingAttrs = numAttrs('rating', data.rating, 'grouped');
   let ratingHtml: string;
+  // Invisible stand-in for the widest rating the line has to fit (see the
+  // rating-ghost row below). The badge is a fixed size, so it only needs its box.
+  let ratingGhost: string;
   if (isFaceit) {
     // ELO takes the same colour as the dial: the level's tier colour, or the
     // Challenger red / #1–#3 medal colour.
     const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
     ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
+    ratingGhost = `<span class="rating-plain faceit-elo">${RATING_GHOST}</span>`;
+  } else if (config.showBadge) {
+    ratingHtml = `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
+    ratingGhost = '<div class="rating-badge"></div>';
   } else {
-    ratingHtml = config.showBadge
-      ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`
-      : `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
+    ratingHtml = `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
+    ratingGhost = `<span class="rating-plain">${RATING_GHOST}</span>`;
   }
 
   // Rating change (rank loss/gain) — the rank-point diff (Premier) or session
@@ -108,6 +119,15 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     const abs = Math.abs(data.ratingDiff);
     diffHtml = `<span class="rating-diff ${cls}">${DIFF_ARROW}<span${numAttrs('diff', abs)}>${abs}</span></span>`;
   }
+  // The rating line reserves room for the widest values it's meant to hold — a
+  // five-digit rating (88,888) and, when the change is on, a three-digit change
+  // — so the widget keeps one size as the numbers roll, instead of growing and
+  // shrinking with every update. A hidden "ghost" row with those values shares
+  // the line's grid cell with the real one; the line takes the wider of the two.
+  const ghostDiff = config.showChange
+    ? `<span class="rating-diff positive">${DIFF_ARROW}<span>${DIFF_GHOST}</span></span>`
+    : '';
+  const ratingGhostRow = `<div class="rating-row rating-ghost" aria-hidden="true">${ratingGhost}${ghostDiff}</div>`;
 
   // Left slot. Premier: the player's avatar (real Steam avatar, or the default
   // blue "smiley" mark so a missing/private avatar still shows a face). FACEIT:
@@ -181,7 +201,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
         // Placeholders ("—") aren't numbers, so they just swap in statically.
         const v = statValues[k];
         const attrs = v === '—' ? '' : numAttrs(`stat-${k}`, Number(v), k === 'kd' ? 'fixed2' : 'int');
-        return `<div class="stat"><span class="stat-val"${attrs}>${v}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
+        return `<div class="stat stat-${k}"><span class="stat-val"${attrs}>${v}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
       })
       .join('');
     statsHtml = `<div class="stats">${cells}</div>`;
@@ -251,8 +271,11 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
           <div class="identity-text">
             ${nameHtml}
             <div class="rating-line">
-              ${ratingHtml}
-              ${diffHtml}
+              <div class="rating-row">
+                ${ratingHtml}
+                ${diffHtml}
+              </div>
+              ${ratingGhostRow}
             </div>
           </div>
         </div>
