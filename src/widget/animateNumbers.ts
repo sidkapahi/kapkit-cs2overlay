@@ -16,7 +16,8 @@ const NUMBER_FORMATS: Record<string, Format> = {
 
 // Remembers the last value shown for each tagged number (by `data-flow` key) and,
 // after every re-render, rolls the ones that changed from their old value to the
-// new one with NumberFlow. The first time a key is seen it just shows statically.
+// new one with NumberFlow. The first time a key is seen (the overlay's first
+// load, or a number that just appeared) it rolls up from zero.
 export function createNumberAnimator() {
   const previous = new Map<string, number>();
 
@@ -25,9 +26,9 @@ export function createNumberAnimator() {
       const key = el.dataset.flow!;
       const value = Number(el.dataset.flowValue);
       if (!Number.isFinite(value)) return;
-      const prev = previous.get(key);
+      const prev = previous.get(key) ?? 0;
       previous.set(key, value);
-      if (prev === undefined || prev === value) return;
+      if (prev === value) return;
 
       const flow = document.createElement('number-flow') as NumberFlow;
       flow.locales = 'en-US';

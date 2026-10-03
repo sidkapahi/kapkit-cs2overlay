@@ -61,8 +61,8 @@ function brandHtml(): string {
 // Tags a numeric value so the live widget can roll it to its next value with
 // NumberFlow (see src/widget/animateNumbers.ts). `key` identifies the number
 // across renders; `fmt` names how it's formatted (see NUMBER_FORMATS there). The
-// span still holds the plain text, so the customizer preview and the very first
-// widget render are unchanged.
+// span still holds the plain text, so the customizer preview (which doesn't
+// animate) is unchanged.
 function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' = 'int'): string {
   return ` data-flow="${key}" data-flow-value="${value}" data-flow-fmt="${fmt}"`;
 }
