@@ -321,7 +321,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 // Simple single-line state (loading / error / prompt) styled like the widget.
 export function renderMessage(title: string, value: string): string {
   return `
-    <div class="widget rank-gray no-badge no-avatar">
+    <div class="widget is-message rank-gray no-badge no-avatar">
       <div class="widget-main">
         <div class="identity">
           <div class="identity-text">
