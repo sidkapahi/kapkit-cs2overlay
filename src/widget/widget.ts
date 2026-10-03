@@ -13,6 +13,7 @@ import {
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
 import { createNumberAnimator, playIntro } from './animateNumbers';
+import { takeReloadStash, watchForNewBuild } from './autoReload';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -42,7 +43,12 @@ async function init() {
     return;
   }
 
-  container.innerHTML = `<div class="widget rank-gray no-badge no-avatar loading">
+  // If this load is the overlay reloading itself onto a new deploy, put back
+  // exactly what was on screen so the swap is invisible on stream.
+  const stash = takeReloadStash();
+  container.innerHTML =
+    stash ??
+    `<div class="widget rank-gray no-badge no-avatar loading">
     <div class="widget-main"><div class="identity"><div class="identity-text">
       <div class="name">Loading…</div>
       <div class="rating-line"><span class="rating-plain">—</span></div>
@@ -85,9 +91,13 @@ async function init() {
   // The markup last written to the page. render() runs on every live/stats poll,
   // so skipping identical markup keeps an in-flight number animation (and the
   // images) from being torn down when nothing actually changed.
-  let lastHtml = '';
+  // Seeded with the restored markup after an update reload, so the first render
+  // neither replays the entrance nor redraws identical markup.
+  let lastHtml = stash ?? '';
   // Rolls each changed number from its previous value instead of swapping it.
   const animateNumbers = createNumberAnimator();
+  // After an update reload, numbers roll from what was already showing, not from 0.
+  if (stash) animateNumbers(container, false);
 
   // Renders whatever we currently know. In session mode it advances the session
   // from the newest live status + matches, then overrides the W/L pills with the
@@ -171,9 +181,10 @@ async function init() {
       });
     }
     statsHealthy = false;
-    // Keep the last good render if we already have one; only show the error
-    // state on the very first failure.
-    if (!lastData) {
+    // Keep the last good render if we already have one (including the markup
+    // restored after an update reload); only show the error state on the very
+    // first failure.
+    if (!lastHtml) {
       container.innerHTML = renderMessage(
         'Error',
         lastError instanceof Error ? lastError.message : 'Failed to fetch',
@@ -218,6 +229,9 @@ async function init() {
   window.addEventListener('pageshow', refreshOnWake);
   window.addEventListener('focus', refreshOnWake);
   window.addEventListener('online', refreshOnWake);
+
+  // Reload onto a new deploy when one goes live.
+  watchForNewBuild(container, () => lastHtml);
 }
 
 init();

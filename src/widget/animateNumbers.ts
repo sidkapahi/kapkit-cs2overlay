@@ -38,12 +38,16 @@ export function playIntro(root: HTMLElement) {
 // the rating-change arrow and fades its colour when a gain flips to a loss (or
 // back), spins the arrow in when the change first appears, and slides new
 // matches into the history strip.
+//
+// With `animate` false it only records what's on screen as the starting point,
+// so the next render rolls from those values instead of from zero (used when the
+// page reloads itself onto a new build, see autoReload.ts).
 export function createNumberAnimator() {
   const previous = new Map<string, number>();
   let prevArrowDeg: number | undefined;
   let prevDiffColor = '';
 
-  function animateDiff(root: HTMLElement) {
+  function animateDiff(root: HTMLElement, animate: boolean) {
     // Skip the invisible size placeholders (.slot-ghost, see numSlot in render.ts).
     const diff = [...root.querySelectorAll<HTMLElement>('.rating-diff')].find(
       (el) => !el.closest('.slot-ghost'),
@@ -61,7 +65,7 @@ export function createNumberAnimator() {
     const fromColor = prevDiffColor;
     prevArrowDeg = deg;
     prevDiffColor = color;
-    if (!arrow || fromDeg === deg || reducedMotion()) return;
+    if (!animate || !arrow || fromDeg === deg || reducedMotion()) return;
 
     if (fromDeg === undefined) {
       // First appearance: start pointing right and swing up (gain) or down (loss).
@@ -87,7 +91,7 @@ export function createNumberAnimator() {
   // matches pushed off the end slide out to the right and fade.
   let prevHistory: { id: string; html: string }[] | null = null;
 
-  function animateHistory(root: HTMLElement) {
+  function animateHistory(root: HTMLElement, animate: boolean) {
     const strip = root.querySelector<HTMLElement>('.hist-letters');
     const items = strip ? [...strip.querySelectorAll<HTMLElement>(':scope > [data-hist-id]')] : [];
     const before = prevHistory;
@@ -96,7 +100,7 @@ export function createNumberAnimator() {
       strip && items.length === strip.children.length
         ? items.map((el) => ({ id: el.dataset.histId!, html: el.outerHTML }))
         : null;
-    if (!before || !prevHistory || items.length < 2 || reducedMotion()) return;
+    if (!animate || !before || !prevHistory || items.length < 2 || reducedMotion()) return;
 
     // How many new matches were added at the front: the old newest match now
     // sits that many slots further right.
@@ -144,7 +148,7 @@ export function createNumberAnimator() {
     });
   }
 
-  return function animateNumbers(root: HTMLElement) {
+  return function animateNumbers(root: HTMLElement, animate = true) {
     const seen = new Set<string>();
     root.querySelectorAll<HTMLElement>('[data-flow]').forEach((el) => {
       const key = el.dataset.flow!;
@@ -153,7 +157,7 @@ export function createNumberAnimator() {
       if (!Number.isFinite(value)) return;
       const prev = previous.get(key) ?? 0;
       previous.set(key, value);
-      if (prev === value) return;
+      if (!animate || prev === value) return;
 
       const flow = document.createElement('number-flow') as NumberFlow;
       flow.locales = 'en-US';
@@ -167,7 +171,7 @@ export function createNumberAnimator() {
     // Forget numbers that are no longer shown (a stat or the change turned
     // off), so they roll up from zero again when they come back.
     for (const key of previous.keys()) if (!seen.has(key)) previous.delete(key);
-    animateDiff(root);
-    animateHistory(root);
+    animateDiff(root, animate);
+    animateHistory(root, animate);
   };
 }
