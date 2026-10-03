@@ -1,6 +1,7 @@
 import 'number-flow';
 import type NumberFlow from 'number-flow';
 import type { Format } from 'number-flow';
+import { createRankAnimator } from './animateRank';
 
 // Intl formats matching the plain text render.ts writes for each `data-flow-fmt`,
 // so a number looks the same before, during and after its roll.
@@ -37,9 +38,11 @@ export function playIntro(root: HTMLElement) {
 // load, or a number that just appeared) it rolls up from zero. It also swings
 // the rating-change arrow and fades its colour when a gain flips to a loss (or
 // back), spins the arrow in when the change first appears, and slides new
-// matches into the history strip.
+// matches into the history strip, and animates FACEIT level changes
+// (animateRank.ts).
 export function createNumberAnimator() {
   const previous = new Map<string, number>();
+  const animateRank = createRankAnimator();
   let prevArrowDeg: number | undefined;
   let prevDiffColor = '';
 
@@ -169,5 +172,6 @@ export function createNumberAnimator() {
     for (const key of previous.keys()) if (!seen.has(key)) previous.delete(key);
     animateDiff(root);
     animateHistory(root);
+    animateRank(root);
   };
 }

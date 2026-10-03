@@ -344,6 +344,38 @@ body {
   height: 80px;
 }
 
+/* Level-change animation layers (animateRank.ts): copies of the old and new
+   dial stacked over the real one while it's hidden. Out of flow, so they never
+   move anything. */
+.rank-fx {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  pointer-events: none;
+}
+
+.rank-fx-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.rank-fx-layer svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* The level number rolls through a round window in the dial's centre. */
+.rank-fx-num { clip-path: circle(30% at 50% 50%); }
+
+.rank-fx-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid;
+  border-radius: 50%;
+}
+
 /* Challenger leaderboard position (#528) — the rank number in a pill filled
    with the widget's own background, overlapping the bottom of the emblem so it
    reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
