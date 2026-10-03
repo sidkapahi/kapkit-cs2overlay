@@ -43,9 +43,9 @@ export function createNumberAnimator() {
   let prevDiffColor = '';
 
   function animateDiff(root: HTMLElement) {
-    // Skip the invisible size placeholder (.rating-ghost in render.ts).
+    // Skip the invisible size placeholders (.slot-ghost, see numSlot in render.ts).
     const diff = [...root.querySelectorAll<HTMLElement>('.rating-diff')].find(
-      (el) => !el.closest('.rating-ghost'),
+      (el) => !el.closest('.slot-ghost'),
     );
     if (!diff) {
       // Hidden (no change, or turned off): the next one spins in fresh.

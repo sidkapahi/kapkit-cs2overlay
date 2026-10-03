@@ -70,10 +70,34 @@ function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' 
   return ` data-flow="${key}" data-flow-value="${value}" data-flow-fmt="${fmt}"`;
 }
 
-// Widest values the rating line reserves space for (see ratingGhostRow in
-// renderWidget). Zeros, set in tabular figures, are as wide as any digit.
-const RATING_GHOST = '00,000';
-const DIFF_GHOST = '000';
+// Ghost values for a number slot (see numSlot): the pattern with every `#`
+// filled by each digit in turn, so the slot fits the font's widest digit even in
+// a font without tabular figures.
+const DIGITS = '0123456789'.split('');
+const ghosts = (pattern: string) => DIGITS.map((d) => pattern.replace(/#/g, d));
+
+// The widest value each number reserves room for: a five-digit rating, a
+// three-digit change, two-digit W/L counts, and per stat its widest normal
+// reading (ADR and win % can reach three digits; K/D is always "0.00").
+const RATING_GHOSTS = ghosts('##,###');
+const DIFF_GHOSTS = ghosts('###');
+const WL_GHOSTS = ghosts('##');
+const STAT_GHOSTS: Record<StatKey, string[]> = {
+  kd: ghosts('#.##'),
+  avg: ghosts('##'),
+  aim: ghosts('##'),
+  winpct: ghosts('###'),
+  adr: ghosts('###'),
+  hs: ghosts('##'),
+};
+
+// Wraps a number in a fixed-size slot: invisible "ghost" copies of the widest
+// values it should hold share its grid cell, so the slot is as wide as the
+// widest of them (or the real value, if that's bigger). The number then never
+// changes the widget's size or nudges what comes after it as it updates.
+function numSlot(real: string, ghosts: string[], cls = 'num-slot'): string {
+  return `<span class="${cls}">${ghosts.map((g) => `<span class="slot-ghost" aria-hidden="true">${g}</span>`).join('')}${real}</span>`;
+}
 
 // Builds the full widget markup for a config + data pair. Shared by the live
 // widget and the customizer preview so both stay pixel-identical.
@@ -92,21 +116,21 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   const ratingText = formatRating(data.rating);
   const ratingAttrs = numAttrs('rating', data.rating, 'grouped');
   let ratingHtml: string;
-  // Invisible stand-in for the widest rating the line has to fit (see the
-  // rating-ghost row below). The badge is a fixed size, so it only needs its box.
-  let ratingGhost: string;
+  // Invisible stand-ins for the widest rating the slot has to fit (see numSlot).
+  // The badge is a fixed size, so it only needs its box.
+  let ratingGhosts: string[];
   if (isFaceit) {
     // ELO takes the same colour as the dial: the level's tier colour, or the
     // Challenger red / #1–#3 medal colour.
     const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
     ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
-    ratingGhost = `<span class="rating-plain faceit-elo">${RATING_GHOST}</span>`;
+    ratingGhosts = RATING_GHOSTS.map((g) => `<span class="rating-plain faceit-elo">${g}</span>`);
   } else if (config.showBadge) {
     ratingHtml = `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
-    ratingGhost = '<div class="rating-badge"></div>';
+    ratingGhosts = ['<div class="rating-badge"></div>'];
   } else {
     ratingHtml = `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
-    ratingGhost = `<span class="rating-plain">${RATING_GHOST}</span>`;
+    ratingGhosts = RATING_GHOSTS.map((g) => `<span class="rating-plain">${g}</span>`);
   }
 
   // Rating change (rank loss/gain) — the rank-point diff (Premier) or session
@@ -119,15 +143,17 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     const abs = Math.abs(data.ratingDiff);
     diffHtml = `<span class="rating-diff ${cls}">${DIFF_ARROW}<span${numAttrs('diff', abs)}>${abs}</span></span>`;
   }
-  // The rating line reserves room for the widest values it's meant to hold — a
-  // five-digit rating (88,888) and, when the change is on, a three-digit change
-  // — so the widget keeps one size as the numbers roll, instead of growing and
-  // shrinking with every update. A hidden "ghost" row with those values shares
-  // the line's grid cell with the real one; the line takes the wider of the two.
-  const ghostDiff = config.showChange
-    ? `<span class="rating-diff positive">${DIFF_ARROW}<span>${DIFF_GHOST}</span></span>`
+  // The rating and the change each sit in a fixed slot sized for a five-digit
+  // rating and a three-digit change, so the widget keeps one size as the numbers
+  // roll and the change arrow stays put instead of sliding with the rating's
+  // width. The change slot is there whenever the change is on, even at 0.
+  const ratingSlot = numSlot(ratingHtml, ratingGhosts);
+  const diffSlot = config.showChange
+    ? numSlot(
+        diffHtml,
+        DIFF_GHOSTS.map((g) => `<span class="rating-diff positive">${DIFF_ARROW}<span>${g}</span></span>`),
+      )
     : '';
-  const ratingGhostRow = `<div class="rating-row rating-ghost" aria-hidden="true">${ratingGhost}${ghostDiff}</div>`;
 
   // Left slot. Premier: the player's avatar (real Steam avatar, or the default
   // blue "smiley" mark so a missing/private avatar still shows a face). FACEIT:
@@ -169,8 +195,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showWinLoss) {
     wlHtml = `
     <div class="wl">
-      <div class="wl-pill wl-win"><span class="wl-letter">W</span><span class="wl-count"${numAttrs('wins', data.wins)}>${data.wins}</span></div>
-      <div class="wl-pill wl-loss"><span class="wl-letter">L</span><span class="wl-count"${numAttrs('losses', data.losses)}>${data.losses}</span></div>
+      <div class="wl-pill wl-win"><span class="wl-letter">W</span>${numSlot(`<span${numAttrs('wins', data.wins)}>${data.wins}</span>`, WL_GHOSTS, 'num-slot wl-count')}</div>
+      <div class="wl-pill wl-loss"><span class="wl-letter">L</span>${numSlot(`<span${numAttrs('losses', data.losses)}>${data.losses}</span>`, WL_GHOSTS, 'num-slot wl-count')}</div>
     </div>`;
   }
 
@@ -201,7 +227,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
         // Placeholders ("—") aren't numbers, so they just swap in statically.
         const v = statValues[k];
         const attrs = v === '—' ? '' : numAttrs(`stat-${k}`, Number(v), k === 'kd' ? 'fixed2' : 'int');
-        return `<div class="stat stat-${k}"><span class="stat-val"${attrs}>${v}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
+        const val = numSlot(`<span${attrs}>${v}</span>`, STAT_GHOSTS[k], 'num-slot stat-val');
+        return `<div class="stat stat-${k}">${val}<span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
       })
       .join('');
     statsHtml = `<div class="stats">${cells}</div>`;
@@ -271,11 +298,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
           <div class="identity-text">
             ${nameHtml}
             <div class="rating-line">
-              <div class="rating-row">
-                ${ratingHtml}
-                ${diffHtml}
-              </div>
-              ${ratingGhostRow}
+              ${ratingSlot}
+              ${diffSlot}
             </div>
           </div>
         </div>

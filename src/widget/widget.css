@@ -58,29 +58,36 @@ body {
 }
 
 .rating-line {
-  display: grid;
-  align-items: center;
-}
-/* The rating + change, and its invisible "ghost" twin holding the widest values
-   the line is sized for (see ratingGhostRow in render.ts). Both sit in the same
-   grid cell, so the line is as wide as the larger of the two and the widget
-   doesn't resize as the numbers change. */
-.rating-row {
-  grid-area: 1 / 1;
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.rating-ghost {
+/* A number's fixed-size slot (numSlot in render.ts): invisible ghosts of the
+   widest values share the real number's grid cell, so the slot is as wide as
+   the widest of them and the number is left-aligned inside it. */
+.num-slot {
+  display: inline-grid;
+  align-items: center;
+  justify-items: start;
+}
+.num-slot > * { grid-area: 1 / 1; }
+/* NumberFlow's rolling digits can measure a fraction of a pixel wider than the
+   settled number mid-animation. A 1px allowance (negative margin on the number,
+   matching padding on the slot) absorbs that, so the slot doesn't twitch. */
+.num-slot { padding-inline-end: 1px; }
+.num-slot > :not(.slot-ghost) { margin-inline-end: -1px; }
+.slot-ghost {
   visibility: hidden;
   pointer-events: none;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
 }
 
 /* Plain (no-badge) rating — rank-coloured number. Also the FACEIT ELO. Follows
    the weight picked in Design (Bold by default). */
 .rating-plain {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   font-size: 30px;
   font-weight: var(--w-weight, 700);
   line-height: 1;
@@ -113,6 +120,10 @@ body {
 }
 
 .rating-badge-text {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   position: absolute;
   left: 26%;
   right: 8%;
@@ -144,6 +155,10 @@ body {
 /* Rank loss/gain — a directional arrow (inherits the tint via currentColor)
    followed by the absolute change. Sized a step below the rating beside it. */
 .rating-diff {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   display: inline-flex;
   align-items: center;
   gap: 0.1em; /* 4px at the design's 40px number (Figma 70:1419 / 70:1413) */
@@ -197,14 +212,10 @@ body {
   min-width: 22px;
   text-align: right;
 }
-/* Room for two digits, so the record doesn't widen the widget going from 9 to
-   10 (JetBrains Mono is monospaced, so 2ch is exactly two digits). Left-aligned
-   so a single digit still sits right next to its letter. */
-.wl-count {
-  justify-self: end;
-  min-width: 2ch;
-  text-align: left;
-}
+/* Sized for two digits (numSlot in render.ts), so the record doesn't widen the
+   widget going from 9 to 10. Left-aligned so a single digit still sits right
+   next to its letter. */
+.wl-count { justify-self: end; }
 
 .wl-win  { color: #23a827; }
 .wl-loss { color: #ff3636; }
@@ -234,13 +245,9 @@ body {
   font-feature-settings: 'tnum';
 }
 
-/* Each value reserves room for its widest normal reading (two digits; three
-   for ADR and win % which can hit 100+; K/D is always "0.00"), so a stat going
-   from 9 to 10 doesn't resize the widget. Tabular figures make every digit 1ch. */
-.stat-val { min-width: 2ch; text-align: center; }
-.stat-kd .stat-val { min-width: 4ch; }
-.stat-adr .stat-val,
-.stat-winpct .stat-val { min-width: 3ch; }
+/* Each value sits in a slot sized for its widest normal reading (numSlot in
+   render.ts), centred over its label. */
+.stat-val.num-slot { justify-items: center; }
 
 .stat-lbl {
   font-size: 14px;
