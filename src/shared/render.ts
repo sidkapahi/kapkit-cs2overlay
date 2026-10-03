@@ -58,6 +58,15 @@ function brandHtml(): string {
   return `<div class="hist-brand"><img class="hist-logo" src="${brandLogoSrc}" alt="kapKit"></div>`;
 }
 
+// Tags a numeric value so the live widget can roll it to its next value with
+// NumberFlow (see src/widget/animateNumbers.ts). `key` identifies the number
+// across renders; `fmt` names how it's formatted (see NUMBER_FORMATS there). The
+// span still holds the plain text, so the customizer preview and the very first
+// widget render are unchanged.
+function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' = 'int'): string {
+  return ` data-flow="${key}" data-flow-value="${value}" data-flow-fmt="${fmt}"`;
+}
+
 // Builds the full widget markup for a config + data pair. Shared by the live
 // widget and the customizer preview so both stay pixel-identical.
 export function renderWidget(config: WidgetConfig, data: PremierData): string {
@@ -73,16 +82,17 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // number. FACEIT: the ELO, tinted with the skill-level colour — the dial art
   // already carries the level, so the number sits beside it, not on a badge.
   const ratingText = formatRating(data.rating);
+  const ratingAttrs = numAttrs('rating', data.rating, 'grouped');
   let ratingHtml: string;
   if (isFaceit) {
     // ELO takes the same colour as the dial: the level's tier colour, or the
     // Challenger red / #1–#3 medal colour.
     const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
-    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}">${ratingText}</span>`;
+    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
   } else {
     ratingHtml = config.showBadge
-      ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text">${ratingText}</span></div>`
-      : `<span class="rating-plain">${ratingText}</span>`;
+      ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`
+      : `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
   }
 
   // Rating change (rank loss/gain) — the rank-point diff (Premier) or session
@@ -93,7 +103,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     const up = data.ratingDiff > 0;
     const cls = up ? 'positive' : 'negative';
     const arrow = up ? DIFF_ARROW_UP : DIFF_ARROW_DOWN;
-    diffHtml = `<span class="rating-diff ${cls}">${arrow}${Math.abs(data.ratingDiff)}</span>`;
+    const abs = Math.abs(data.ratingDiff);
+    diffHtml = `<span class="rating-diff ${cls}">${arrow}<span${numAttrs('diff', abs)}>${abs}</span></span>`;
   }
 
   // Left slot. Premier: the player's avatar (real Steam avatar, or the default
@@ -111,7 +122,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     const dial = faceitDialSvg(data.skillLevel, isChallenger, data.leaderboardPosition);
     const posHtml =
       isChallenger && data.leaderboardPosition != null
-        ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#${data.leaderboardPosition}</span>`
+        ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#<span${numAttrs('pos', data.leaderboardPosition)}>${data.leaderboardPosition}</span></span>`
         : '';
     avatarHtml = `<div class="faceit-rank">${dial}${posHtml}</div>`;
   } else {
@@ -136,8 +147,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showWinLoss) {
     wlHtml = `
     <div class="wl">
-      <div class="wl-pill wl-win"><span class="wl-letter">W</span><span class="wl-count">${data.wins}</span></div>
-      <div class="wl-pill wl-loss"><span class="wl-letter">L</span><span class="wl-count">${data.losses}</span></div>
+      <div class="wl-pill wl-win"><span class="wl-letter">W</span><span class="wl-count"${numAttrs('wins', data.wins)}>${data.wins}</span></div>
+      <div class="wl-pill wl-loss"><span class="wl-letter">L</span><span class="wl-count"${numAttrs('losses', data.losses)}>${data.losses}</span></div>
     </div>`;
   }
 
@@ -164,10 +175,12 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       hs: data.hsPct != null ? whole(data.hsPct * 100) : '—',
     };
     const cells = config.stats
-      .map(
-        (k) =>
-          `<div class="stat"><span class="stat-val">${statValues[k]}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`,
-      )
+      .map((k) => {
+        // Placeholders ("—") aren't numbers, so they just swap in statically.
+        const v = statValues[k];
+        const attrs = v === '—' ? '' : numAttrs(`stat-${k}`, Number(v), k === 'kd' ? 'fixed2' : 'int');
+        return `<div class="stat"><span class="stat-val"${attrs}>${v}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
+      })
       .join('');
     statsHtml = `<div class="stats">${cells}</div>`;
   }

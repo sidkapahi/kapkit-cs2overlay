@@ -347,3 +347,15 @@ body {
 
 /* ---- Loading ------------------------------------------------------------ */
 .widget.loading { opacity: 0.6; }
+
+/* ---- Number animations -------------------------------------------------- */
+/* NumberFlow (animateNumbers.ts) pads its digits top and bottom so rolling
+   digits fade out at the edges: half the mask height on the digit column and
+   again on its inner wrapper, a full mask height per side. Pull that back with
+   a matching negative margin (same rounding expression NumberFlow uses) so an
+   animated number takes exactly the space its plain text did — no layout
+   shift between the first, static render and later, animated ones. */
+number-flow {
+  --number-flow-mask-height: 0.25em;
+  margin-block: calc(-2 * round(nearest, calc(var(--number-flow-mask-height) / 2), 1px));
+}
