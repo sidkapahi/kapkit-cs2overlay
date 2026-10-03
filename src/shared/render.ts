@@ -251,10 +251,13 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       .map((g) => {
         const cls = g.outcome === 'win' ? 'w' : g.outcome === 'tie' ? 't' : 'l';
         const lbl = g.outcome === 'win' ? 'W' : g.outcome === 'tie' ? 'T' : 'L';
-        if (!eloMode) return `<span class="${cls}">${lbl}</span>`;
+        // The match id lets the live widget slide a new match in on the left
+        // (see animateHistory in animateNumbers.ts).
+        const idAttr = g.id ? ` data-hist-id="${esc(g.id)}"` : '';
+        if (!eloMode) return `<span class="${cls}"${idAttr}>${lbl}</span>`;
         const d = g.eloChange;
         const text = d == null ? lbl : d > 0 ? `+${d}` : d < 0 ? `-${Math.abs(d)}` : '0';
-        return `<span class="hist-chip ${cls}">${text}</span>`;
+        return `<span class="hist-chip ${cls}"${idAttr}>${text}</span>`;
       })
       .join('');
     historyHtml = `

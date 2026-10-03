@@ -36,7 +36,8 @@ export function playIntro(root: HTMLElement) {
 // new one with NumberFlow. The first time a key is seen (the overlay's first
 // load, or a number that just appeared) it rolls up from zero. It also swings
 // the rating-change arrow and fades its colour when a gain flips to a loss (or
-// back), and spins the arrow in when the change first appears.
+// back), spins the arrow in when the change first appears, and slides new
+// matches into the history strip.
 export function createNumberAnimator() {
   const previous = new Map<string, number>();
   let prevArrowDeg: number | undefined;
@@ -81,6 +82,68 @@ export function createNumberAnimator() {
     diff.animate([{ color: fromColor }, { color }], { duration: 500, easing: 'ease-out' });
   }
 
+  // Match history (newest on the left): when new matches come in, they slide in
+  // from the left, the rest of the strip shifts right to make room, and the
+  // matches pushed off the end slide out to the right and fade.
+  let prevHistory: { id: string; html: string }[] | null = null;
+
+  function animateHistory(root: HTMLElement) {
+    const strip = root.querySelector<HTMLElement>('.hist-letters');
+    const items = strip ? [...strip.querySelectorAll<HTMLElement>(':scope > [data-hist-id]')] : [];
+    const before = prevHistory;
+    // Only items that all carry a match id can be lined up across renders.
+    prevHistory =
+      strip && items.length === strip.children.length
+        ? items.map((el) => ({ id: el.dataset.histId!, html: el.outerHTML }))
+        : null;
+    if (!before || !prevHistory || items.length < 2 || reducedMotion()) return;
+
+    // How many new matches were added at the front: the old newest match now
+    // sits that many slots further right.
+    const shift = prevHistory.findIndex((m) => m.id === before[0].id);
+    if (shift <= 0) return;
+
+    // Every slot is the same width (letters share one width, ELO chips are
+    // fixed), so one step is the distance between neighbours.
+    const step = items[1].offsetLeft - items[0].offsetLeft;
+    const timing = { duration: 600, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' };
+    items.forEach((el, i) => {
+      const from = `translateX(${-shift * step}px)`;
+      const frames =
+        i < shift
+          ? [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }]
+          : [{ transform: from }, { transform: 'none' }];
+      el.animate(frames, { ...timing, delay: i < shift ? 80 : 0, fill: 'backwards' });
+    });
+
+    // The matches that fell off the end aren't in the new markup: put a copy of
+    // each back where it was and slide it out to the right as it fades.
+    const kept = before.length - shift;
+    before.slice(Math.max(0, kept)).forEach((m, k) => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = m.html;
+      const ghost = tmp.firstElementChild as HTMLElement;
+      ghost.removeAttribute('data-hist-id');
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.style.position = 'absolute';
+      ghost.style.left = `${items[0].offsetLeft + (kept + k) * step}px`;
+      ghost.style.top = `${items[0].offsetTop}px`;
+      strip!.appendChild(ghost);
+      ghost
+        .animate(
+          [
+            { transform: 'none', opacity: 1 },
+            { transform: `translateX(${shift * step}px)`, opacity: 0 },
+          ],
+          timing,
+        )
+        .finished.then(
+          () => ghost.remove(),
+          () => ghost.remove(),
+        );
+    });
+  }
+
   return function animateNumbers(root: HTMLElement) {
     root.querySelectorAll<HTMLElement>('[data-flow]').forEach((el) => {
       const key = el.dataset.flow!;
@@ -100,5 +163,6 @@ export function createNumberAnimator() {
       requestAnimationFrame(() => flow.update(value));
     });
     animateDiff(root);
+    animateHistory(root);
   };
 }
