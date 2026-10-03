@@ -12,7 +12,7 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
-import { createNumberAnimator } from './animateNumbers';
+import { createNumberAnimator, playIntro } from './animateNumbers';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -128,8 +128,11 @@ async function init() {
     }
     const html = renderWidget(config, data);
     if (html === lastHtml) return;
+    // The first real render (lastHtml still empty) also plays the entrance.
+    const first = !lastHtml;
     lastHtml = html;
     container.innerHTML = html;
+    if (first) playIntro(container);
     animateNumbers(container);
   }
 

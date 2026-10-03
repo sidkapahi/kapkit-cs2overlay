@@ -144,6 +144,8 @@ body {
   height: 1.2em;
   flex-shrink: 0;
 }
+/* A loss turns the up-right arrow 90° to point down-right (see render.ts). */
+.rating-diff.negative .diff-arrow { transform: rotate(90deg); }
 /* Same green / red as the W/L record (.wl-win / .wl-loss). */
 .rating-diff.positive { color: #23a827; }
 .rating-diff.negative { color: #ff3636; }
@@ -359,3 +361,44 @@ number-flow {
   --number-flow-mask-height: 0.25em;
   margin-block: calc(-2 * round(nearest, calc(var(--number-flow-mask-height) / 2), 1px));
 }
+
+/* ---- First-load entrance ------------------------------------------------ */
+/* The live widget adds .intro to its container for the first render only (see
+   playIntro in animateNumbers.ts): the card fades in, then the avatar / rank
+   dial pops, the name, labels and W/L letters slide in, and the history strip
+   ticks in left to right, while the numbers roll up from zero. Every element
+   ends at its normal style, so dropping the class afterwards changes nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro .widget { animation: w-in-card 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .avatar,
+  .intro .faceit-rank svg { animation: w-in-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms both; }
+  .intro .faceit-pos { animation: w-in-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 350ms both; }
+  .intro .name { animation: w-in-left 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms both; }
+  .intro .badge-svg { animation: w-in-wipe 550ms cubic-bezier(0.65, 0, 0.35, 1) 150ms both; }
+  .intro .stat-lbl { animation: w-in-up 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 250ms both; }
+  .intro .stat:nth-child(2) .stat-lbl { animation-delay: 320ms; }
+  .intro .stat:nth-child(3) .stat-lbl { animation-delay: 390ms; }
+  .intro .stat:nth-child(4) .stat-lbl { animation-delay: 460ms; }
+  .intro .stat:nth-child(5) .stat-lbl { animation-delay: 530ms; }
+  .intro .stat:nth-child(6) .stat-lbl { animation-delay: 600ms; }
+  .intro .wl-letter { animation: w-in-left 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both; }
+  .intro .wl-loss .wl-letter { animation-delay: 380ms; }
+  .intro .hist-letters > * { animation: w-in-up 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .hist-letters > :nth-child(1) { animation-delay: 350ms; }
+  .intro .hist-letters > :nth-child(2) { animation-delay: 400ms; }
+  .intro .hist-letters > :nth-child(3) { animation-delay: 450ms; }
+  .intro .hist-letters > :nth-child(4) { animation-delay: 500ms; }
+  .intro .hist-letters > :nth-child(5) { animation-delay: 550ms; }
+  .intro .hist-letters > :nth-child(6) { animation-delay: 600ms; }
+  .intro .hist-letters > :nth-child(7) { animation-delay: 650ms; }
+  .intro .hist-letters > :nth-child(8) { animation-delay: 700ms; }
+  .intro .hist-letters > :nth-child(9) { animation-delay: 750ms; }
+  .intro .hist-letters > :nth-child(10) { animation-delay: 800ms; }
+  .intro .hist-brand { animation: w-in-fade 500ms ease-out 600ms both; }
+}
+@keyframes w-in-card { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes w-in-pop  { from { opacity: 0; transform: scale(0.5); } }
+@keyframes w-in-left { from { opacity: 0; transform: translateX(-10px); } }
+@keyframes w-in-up   { from { opacity: 0; transform: translateY(8px); } }
+@keyframes w-in-fade { from { opacity: 0; } }
+@keyframes w-in-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
