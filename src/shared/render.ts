@@ -173,7 +173,11 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       isChallenger && data.leaderboardPosition != null
         ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#<span${numAttrs('pos', data.leaderboardPosition)}>${data.leaderboardPosition}</span></span>`
         : '';
-    avatarHtml = `<div class="faceit-rank">${dial}${posHtml}</div>`;
+    // data-rank (1–10, or 11 for Challenger) and data-rank-color let the live
+    // widget animate a level up/down between renders (see animateRank.ts).
+    const rank = isChallenger ? 11 : Math.max(1, Math.min(10, Math.round(data.skillLevel ?? 1)));
+    const rankColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
+    avatarHtml = `<div class="faceit-rank" data-rank="${rank}" data-rank-color="${rankColor}">${dial}${posHtml}</div>`;
   } else {
     const avatarSrc = data.avatarUrl ? esc(data.avatarUrl) : defaultAvatarSrc;
     avatarHtml = config.showAvatar ? `<img class="avatar" src="${avatarSrc}" alt="">` : '';
