@@ -4,8 +4,11 @@ import { createNumberAnimator, playIntro, reducedMotion } from '../widget/animat
 // stream, plus transitions for the customizer's own changes: when a feature is
 // switched on or off, the card's background morphs from its old size to its new
 // one, the parts that stay slide to their new spots, and parts that just
-// appeared fade in. A new player (fresh preview data) plays the overlay's
-// first-load entrance instead.
+// appeared fade in, and parts that went away fade out where they were. The same
+// morph runs when PREMIER | FACEIT is flipped: the avatar fades into the rank
+// dial, the name cross-fades, the rating rolls to the other number and takes
+// on its colour. A new player (a new `key`) plays the overlay's first-load
+// entrance instead.
 
 const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 const RESIZE_MS = 450;
@@ -26,10 +29,67 @@ function partKey(el: Element): string {
   return [...MOVING_PARTS, ...APPEARING_PARTS].find((sel) => el.matches(sel)) ?? '';
 }
 
-function snapshotParts(root: HTMLElement): Map<string, DOMRect> {
-  const map = new Map<string, DOMRect>();
-  root.querySelectorAll(PART_SELECTOR).forEach((el) => map.set(partKey(el), el.getBoundingClientRect()));
+interface PartSnapshot {
+  rect: DOMRect;
+  html: string;
+  text: string;
+}
+
+function snapshotParts(root: HTMLElement): Map<string, PartSnapshot> {
+  const map = new Map<string, PartSnapshot>();
+  root.querySelectorAll<HTMLElement>(PART_SELECTOR).forEach((el) => {
+    // Skip the invisible size placeholders (.slot-ghost, see numSlot in render.ts).
+    if (el.closest('.slot-ghost')) return;
+    map.set(partKey(el), { rect: el.getBoundingClientRect(), html: el.outerHTML, text: el.textContent ?? '' });
+  });
   return map;
+}
+
+// The visible rating's colour (Premier's rank tier or FACEIT's level colour).
+function ratingColor(root: HTMLElement): string {
+  const el = [...root.querySelectorAll<HTMLElement>('.rating-plain, .rating-badge-text')].find(
+    (e) => !e.closest('.slot-ghost'),
+  );
+  return el ? getComputedStyle(el).color : '';
+}
+
+// Puts a copy of a part that's gone (or been replaced) back where it was and
+// fades it out. It sits in a wrapper carrying the old card's classes and
+// inline style, so it keeps the text colour, font and tier tint it had.
+function fadeOutGhost(body: HTMLElement, part: PartSnapshot, cardClass: string, cardStyle: string, scale: number) {
+  const bodyRect = body.getBoundingClientRect();
+  const wrap = document.createElement('div');
+  // Without .widget itself, so nothing mistakes the copy for the card.
+  wrap.className = cardClass.replace(/(^|\s)widget(?=\s|$)/, ' ').trim();
+  wrap.setAttribute('style', cardStyle);
+  wrap.style.color = '#f0f0f0';
+  wrap.setAttribute('aria-hidden', 'true');
+  Object.assign(wrap.style, {
+    position: 'absolute',
+    left: `${part.rect.left - bodyRect.left}px`,
+    top: `${part.rect.top - bodyRect.top}px`,
+    width: `${part.rect.width / scale}px`,
+    height: `${part.rect.height / scale}px`,
+    padding: '0',
+    background: 'transparent',
+    display: 'block',
+    transform: `scale(${scale})`,
+    transformOrigin: '0 0',
+    pointerEvents: 'none',
+    zIndex: '1',
+  });
+  wrap.innerHTML = part.html;
+  body.appendChild(wrap);
+  wrap
+    .animate([{ opacity: 1 }, { opacity: 0, transform: `scale(${scale * 0.9})` }], {
+      duration: RESIZE_MS * 0.6,
+      easing: EASE,
+      fill: 'forwards',
+    })
+    .finished.then(
+      () => wrap.remove(),
+      () => wrap.remove(),
+    );
 }
 
 export function createPreviewAnimator() {
@@ -43,9 +103,9 @@ export function createPreviewAnimator() {
   let endResize: (() => void) | null = null;
 
   // Renders `html` into `body`, calls `fit` to scale it to the panel, and
-  // animates the change. `data` is the preview's data object: a new one means
-  // a new player, which gets the first-load entrance.
-  return function update(body: HTMLElement, html: string, data: unknown, fit: () => void) {
+  // animates the change. `key` identifies the loaded player: a new one gets the
+  // first-load entrance, the same one (a toggle, or a provider switch) morphs.
+  return function update(body: HTMLElement, html: string, key: unknown, fit: () => void) {
     // Nothing changed (and it's still on screen): leave running animations be.
     if (html === lastHtml && lastWidget?.isConnected) {
       fit();
@@ -53,14 +113,18 @@ export function createPreviewAnimator() {
     }
     const oldWidget = body.querySelector<HTMLElement>('.widget');
     const isWidget = html.includes('class="widget ');
-    const newPlayer = data !== lastData;
+    const newPlayer = key !== lastData;
     lastHtml = html;
-    lastData = data;
+    lastData = key;
 
     // Where things were before this change (the plate, if one is mid-morph,
     // shows the card's current visible size).
     const oldRect = (plate ?? oldWidget)?.getBoundingClientRect();
-    const oldParts = oldWidget ? snapshotParts(oldWidget) : new Map<string, DOMRect>();
+    const oldParts = oldWidget ? snapshotParts(oldWidget) : new Map<string, PartSnapshot>();
+    const oldClass = oldWidget?.className ?? '';
+    const oldStyle = oldWidget?.getAttribute('style') ?? '';
+    const oldColor = oldWidget ? ratingColor(oldWidget) : '';
+    const oldScale = oldWidget ? oldWidget.getBoundingClientRect().width / oldWidget.offsetWidth || 1 : 1;
     endResize?.();
 
     body.innerHTML = html;
@@ -80,10 +144,19 @@ export function createPreviewAnimator() {
 
     const scale = widget.getBoundingClientRect().width / widget.offsetWidth || 1;
 
-    // Parts that stayed slide from their old spot; new ones fade in.
+    // Parts that stayed slide from their old spot; new ones fade in, and a name
+    // that changed (a provider switch: Steam name vs FACEIT nickname)
+    // cross-fades with a copy of the old one.
+    const seen = new Set<string>();
     widget.querySelectorAll<HTMLElement>(PART_SELECTOR).forEach((el) => {
+      if (el.closest('.slot-ghost')) return;
       const key = partKey(el);
-      const before = oldParts.get(key);
+      seen.add(key);
+      let before = oldParts.get(key);
+      if (before && key === '.name' && before.text !== el.textContent) {
+        fadeOutGhost(body, before, oldClass, oldStyle, oldScale);
+        before = undefined;
+      }
       if (!before) {
         el.animate(
           [
@@ -96,14 +169,28 @@ export function createPreviewAnimator() {
       }
       if (!el.matches(MOVING_PARTS.join(', '))) return;
       const now = el.getBoundingClientRect();
-      const dx = (before.left - now.left) / scale;
-      const dy = (before.top - now.top) / scale;
+      const dx = (before.rect.left - now.left) / scale;
+      const dy = (before.rect.top - now.top) / scale;
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
       el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
         duration: RESIZE_MS,
         easing: EASE,
       });
     });
+
+    // Parts that are gone fade out where they were.
+    oldParts.forEach((part, key) => {
+      if (!seen.has(key)) fadeOutGhost(body, part, oldClass, oldStyle, oldScale);
+    });
+
+    // The rating takes on its new colour (rank tier ↔ FACEIT level) gradually.
+    const newColor = ratingColor(widget);
+    if (oldColor && newColor && oldColor !== newColor) {
+      const el = [...widget.querySelectorAll<HTMLElement>('.rating-plain, .rating-badge-text')].find(
+        (e) => !e.closest('.slot-ghost'),
+      );
+      el?.animate([{ color: oldColor }, { color: newColor }], { duration: 600, easing: 'ease-in-out' });
+    }
 
     // Morph the card's background from its old size to its new one: a plate
     // with the card's colour and corners animates between the two boxes while

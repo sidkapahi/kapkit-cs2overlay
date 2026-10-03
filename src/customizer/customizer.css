@@ -923,6 +923,15 @@ select.field-input option {
   will-change: transform;
 }
 
+/* Waiting on the other provider's data after a PREMIER | FACEIT switch: the
+   card stays put, dimmed, and morphs once the data lands. */
+.preview-body .widget {
+  transition: opacity 200ms ease;
+}
+.preview-body.is-pending .widget {
+  opacity: 0.55;
+}
+
 .preview-body .name {
   max-width: 320px;
 }
