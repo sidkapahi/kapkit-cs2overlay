@@ -47,6 +47,7 @@ import {
   type StatKey,
   type WidgetConfig,
 } from "../shared/types";
+import { createPreviewAnimator } from "./previewMotion";
 import "../widget/widget.css";
 import "./customizer.css";
 
@@ -178,6 +179,10 @@ function promptCardHtml(text: string): string {
   return `<div class="preview-prompt">${text}</div>`;
 }
 
+// Animates preview changes: numbers roll, toggled features resize the card
+// smoothly, and a newly loaded player plays the overlay's entrance.
+const animatePreview = createPreviewAnimator();
+
 function renderPreview() {
   const body = document.getElementById("preview-widget");
   const banner = document.getElementById("preview-banner");
@@ -199,7 +204,9 @@ function renderPreview() {
     } else if (!previewData) {
       body.innerHTML = promptCardHtml(PROMPT_TEXT);
     } else {
-      body.innerHTML = renderWidget(currentConfig, previewData);
+      const html = renderWidget(currentConfig, previewData);
+      animatePreview(body, html, previewData, fitPreview);
+      return;
     }
   }
 
