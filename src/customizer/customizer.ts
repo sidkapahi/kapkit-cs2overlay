@@ -114,9 +114,27 @@ function configEventProps(
     livePlatform: config.livePlatform,
   };
 }
-let previewData: PremierData | null = null;
+// Both providers' data for the current Steam ID, fetched together as soon as
+// the account resolves, so flipping PREMIER | FACEIT shows cached data (and
+// animates the change) instead of a fresh load. Cleared when the account changes.
+type ProviderSlot =
+  | { status: "loading" }
+  | { status: "ok"; data: PremierData }
+  | { status: "error"; error: unknown };
+let slots: Partial<Record<Provider, ProviderSlot>> = {};
+// Errors already reported to analytics for this account, so a provider the
+// player has no account on is counted once, when it's first shown.
+let trackedErrors = new Set<Provider>();
+// Set while the Account input is being resolved to a Steam ID (vanity / FACEIT
+// lookups), and the message when that fails.
+let resolving = false;
 let previewError: string | null = null;
-let previewLoading = false;
+// Bumped each time a fresh account load starts; with the Steam ID it keys the
+// preview animator, so a new load plays the entrance but a provider switch
+// morphs the card in place.
+let loadGen = 0;
+// The account load whose card is on screen ('' when it's a prompt or message).
+let shownKey = "";
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastTrackedSteamId: string | null = null;
 // Last live channel we counted, so adopting a channel fires one adoption event
@@ -189,27 +207,38 @@ function renderPreview() {
   const bannerText = document.getElementById("preview-banner-text");
   if (!body || !banner || !bannerText) return;
 
-  if (previewError) {
-    bannerText.textContent = previewError;
-    banner.hidden = false;
-    // Keep the last good widget behind the banner if we have one; otherwise the
-    // prompt card so the panel never looks broken.
-    body.innerHTML = previewData
-      ? renderWidget(currentConfig, previewData)
-      : promptCardHtml(PROMPT_TEXT);
-  } else {
-    banner.hidden = true;
-    if (previewLoading) {
-      body.innerHTML = renderMessage("Loading", "…");
-    } else if (!previewData) {
-      body.innerHTML = promptCardHtml(PROMPT_TEXT);
-    } else {
-      const html = renderWidget(currentConfig, previewData);
-      animatePreview(body, html, previewData, fitPreview);
+  const slot = currentConfig.steamId ? slots[currentConfig.provider] : undefined;
+  body.classList.remove("is-pending");
+  const error =
+    previewError ??
+    (slot?.status === "error"
+      ? slot.error instanceof Error
+        ? slot.error.message
+        : "Failed to load"
+      : null);
+  banner.hidden = !error;
+  if (error) bannerText.textContent = error;
+
+  const key = `${currentConfig.steamId}#${loadGen}`;
+  if (slot?.status === "ok" && !error) {
+    const html = renderWidget(currentConfig, slot.data);
+    animatePreview(body, html, key, fitPreview);
+    shownKey = key;
+    return;
+  }
+  if (slot?.status === "loading" || (resolving && !error)) {
+    // Switched to a provider whose data is still on its way: keep the card on
+    // screen (dimmed) and morph it once the data lands, rather than flashing
+    // a loading state. Only a first load shows "Loading".
+    if (slot && shownKey === key && body.querySelector(".widget:not(.is-message)")) {
+      body.classList.add("is-pending");
       return;
     }
+    body.innerHTML = renderMessage("Loading", "…");
+  } else {
+    body.innerHTML = promptCardHtml(PROMPT_TEXT);
   }
-
+  shownKey = "";
   fitPreview();
 }
 
@@ -240,9 +269,9 @@ async function resolveAndLoad(rawInput: string) {
 
   if (parsed.kind === "empty") {
     currentConfig.steamId = "";
-    previewData = null;
+    slots = {};
     previewError = null;
-    previewLoading = false;
+    resolving = false;
     renderPreview();
     updateGeneratedUrl();
     return;
@@ -250,9 +279,9 @@ async function resolveAndLoad(rawInput: string) {
 
   if (parsed.kind === "invalid") {
     currentConfig.steamId = "";
-    previewData = null;
+    slots = {};
     previewError = "Enter a Steam ID / profile link or a FACEIT link / username";
-    previewLoading = false;
+    resolving = false;
     renderPreview();
     updateGeneratedUrl();
     return;
@@ -263,7 +292,7 @@ async function resolveAndLoad(rawInput: string) {
   if (parsed.kind === "id") {
     steamId = parsed.steamId;
   } else {
-    previewLoading = true;
+    resolving = true;
     previewError = null;
     renderPreview();
     try {
@@ -277,8 +306,8 @@ async function resolveAndLoad(rawInput: string) {
         provider: currentConfig.provider,
       });
       previewError = e instanceof Error ? e.message : "Failed to resolve";
-      previewData = null;
-      previewLoading = false;
+      slots = {};
+      resolving = false;
       currentConfig.steamId = "";
       renderPreview();
       updateGeneratedUrl();
@@ -287,6 +316,7 @@ async function resolveAndLoad(rawInput: string) {
     if (token !== resolveToken) return; // superseded by newer input
   }
 
+  resolving = false;
   currentConfig.steamId = steamId;
   updateGeneratedUrl();
   await loadPreview(token);
@@ -319,49 +349,70 @@ async function resolveAccountToSteamId(parsed: AccountInput): Promise<string> {
   }
 }
 
+// Fetches the account's Premier and FACEIT data together. Whichever matches the
+// current toggle is shown as soon as it lands; the other waits in `slots` so a
+// switch is instant. A player with no account on one side just gets that
+// side's error banner when they switch to it.
 async function loadPreview(token = ++resolveToken) {
+  slots = {};
+  trackedErrors = new Set();
+  previewError = null;
   if (!currentConfig.steamId) {
-    previewData = null;
-    previewError = null;
-    previewLoading = false;
     renderPreview();
     return;
   }
 
-  previewLoading = true;
-  previewError = null;
+  loadGen++;
+  const steamId = currentConfig.steamId;
+  const fetchers: Record<Provider, () => Promise<PremierData>> = {
+    leetify: () => fetchPremierData(steamId),
+    // Fetch up to matchCount so toggling the stats block (which caps the strip
+    // at 5) never needs a re-fetch; the widget itself fetches the exact 5/10
+    // via faceitHistoryCount.
+    faceit: () => fetchFaceitData(steamId, currentConfig.matchCount),
+  };
+  const providers = Object.keys(fetchers) as Provider[];
+  for (const p of providers) slots[p] = { status: "loading" };
   renderPreview();
 
-  try {
-    const data =
-      currentConfig.provider === "faceit"
-        // Fetch up to matchCount so toggling the stats block (which caps the
-        // strip at 5) never needs a re-fetch; the widget itself fetches the
-        // exact 5/10 via faceitHistoryCount.
-        ? await fetchFaceitData(currentConfig.steamId, currentConfig.matchCount)
-        : await fetchPremierData(currentConfig.steamId);
-    if (token !== resolveToken) return; // superseded by newer input
-    previewData = data;
-    if (currentConfig.steamId !== lastTrackedSteamId) {
-      // Just a funnel count — no Steam ID sent (we only want *that* someone got
-      // this far, not *who*).
-      trackEvent("steam_id_entered");
-      lastTrackedSteamId = currentConfig.steamId;
-    }
-  } catch (e) {
-    if (token !== resolveToken) return; // superseded by newer input
-    trackEvent("preview_error", {
-      stage: "stats",
-      reason: classifyFetchError(e),
-      detail: errorDetail(e),
-      provider: currentConfig.provider,
-    });
-    previewError = e instanceof Error ? e.message : "Failed to load";
-    previewData = null;
-  }
-  previewLoading = false;
-  renderPreview();
-  updateGeneratedUrl();
+  await Promise.all(
+    providers.map(async (p) => {
+      let slot: ProviderSlot;
+      try {
+        slot = { status: "ok", data: await fetchers[p]() };
+      } catch (e) {
+        slot = { status: "error", error: e };
+      }
+      if (token !== resolveToken) return; // superseded by newer input
+      slots[p] = slot;
+      if (slot.status === "ok" && steamId !== lastTrackedSteamId) {
+        // Just a funnel count — no Steam ID sent (we only want *that* someone
+        // got this far, not *who*).
+        trackEvent("steam_id_entered");
+        lastTrackedSteamId = steamId;
+      }
+      if (p === currentConfig.provider) {
+        trackShownError();
+        renderPreview();
+      }
+    }),
+  );
+}
+
+// Reports the current provider's load failure to analytics, once per account
+// and provider, when it's actually shown (a background fetch for the other
+// provider failing isn't an error the visitor saw).
+function trackShownError() {
+  const p = currentConfig.provider;
+  const slot = slots[p];
+  if (slot?.status !== "error" || trackedErrors.has(p)) return;
+  trackedErrors.add(p);
+  trackEvent("preview_error", {
+    stage: "stats",
+    reason: classifyFetchError(slot.error),
+    detail: errorDetail(slot.error),
+    provider: p,
+  });
 }
 
 function debouncedLoadPreview(rawInput: string) {
@@ -371,7 +422,8 @@ function debouncedLoadPreview(rawInput: string) {
 
 // Switches the active data source. The Steam identity and its input stay put —
 // only the stat trio/pills, the provider-specific Design rows, and the preview's
-// data source change. Re-fetches the current Steam ID against the new provider.
+// data source change. Both providers' data is already loaded (or loading) for
+// the current Steam ID, so the preview morphs to the other one in place.
 // `source` is "auto" when a pasted FACEIT/Steam link flipped it.
 function setProvider(provider: Provider, source: "manual" | "auto" = "manual") {
   if (currentConfig.provider === provider) return;
@@ -384,8 +436,11 @@ function setProvider(provider: Provider, source: "manual" | "auto" = "manual") {
   syncProviderToggle();
   syncProviderRows();
 
-  if (currentConfig.steamId) loadPreview();
-  else renderPreview();
+  if (currentConfig.steamId && !slots[provider]) loadPreview();
+  else {
+    trackShownError();
+    renderPreview();
+  }
   updateGeneratedUrl();
   trackEvent("provider_selected", { provider, source });
 }
