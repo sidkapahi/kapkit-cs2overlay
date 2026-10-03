@@ -152,6 +152,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     ? numSlot(
         diffHtml,
         DIFF_GHOSTS.map((g) => `<span class="rating-diff positive">${DIFF_ARROW}<span>${g}</span></span>`),
+        'num-slot diff-slot',
       )
     : '';
 

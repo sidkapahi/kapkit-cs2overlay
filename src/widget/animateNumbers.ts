@@ -21,7 +21,7 @@ const INTRO_MS = 1500;
 // Springy ease (slight overshoot) for the rating-change arrow.
 const ARROW_EASING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Plays the first-load entrance on everything that isn't a rolling number
 // (avatar, name, labels, W/L letters, history strip) by tagging the container
@@ -145,8 +145,10 @@ export function createNumberAnimator() {
   }
 
   return function animateNumbers(root: HTMLElement) {
+    const seen = new Set<string>();
     root.querySelectorAll<HTMLElement>('[data-flow]').forEach((el) => {
       const key = el.dataset.flow!;
+      seen.add(key);
       const value = Number(el.dataset.flowValue);
       if (!Number.isFinite(value)) return;
       const prev = previous.get(key) ?? 0;
@@ -162,6 +164,9 @@ export function createNumberAnimator() {
       el.replaceChildren(flow);
       requestAnimationFrame(() => flow.update(value));
     });
+    // Forget numbers that are no longer shown (a stat or the change turned
+    // off), so they roll up from zero again when they come back.
+    for (const key of previous.keys()) if (!seen.has(key)) previous.delete(key);
     animateDiff(root);
     animateHistory(root);
   };
