@@ -8,12 +8,8 @@ import { fetchWithTimeout } from '../shared/fetchWithTimeout';
 // the same id to /version.json (see vite.config.ts). The overlay polls that file
 // and, once it names a different build, reloads itself at a quiet moment: right
 // away if the source is hidden, otherwise as soon as no animation is running.
-//
-// The reload is meant to be invisible on stream. Just before it, the current
-// markup is stashed in sessionStorage (which survives a reload of the same page);
-// the new page paints that straight away, skips the entrance animation, and then
-// carries on polling as normal. URL params are untouched because it's a plain
-// location.reload() of the same URL.
+// It's a plain location.reload() of the same URL, so the URL params carry over
+// and the overlay comes back exactly like a fresh load, entrance included.
 
 // How often to ask the site which build is live. version.json is a tiny static
 // asset, so this is cheap; a minute keeps a deploy rolling out about as fast as
@@ -27,7 +23,6 @@ const QUIET_CHECK_MS = 500;
 // Never hold a reload back forever (e.g. an animation that never finishes).
 const MAX_WAIT_MS = 30 * 1000;
 
-const STASH_KEY = 'cs2overlay:reload-stash';
 // The build we last reloaded for. If the reload still comes back as the old
 // bundle (a stale cache somewhere), don't keep reloading for the same build.
 const TRIED_KEY = 'cs2overlay:reload-tried';
@@ -45,17 +40,8 @@ function storageSet(key: string, value: string | null) {
     if (value === null) sessionStorage.removeItem(key);
     else sessionStorage.setItem(key, value);
   } catch {
-    // Storage blocked: the reload still works, it just repaints from scratch.
+    // Storage blocked: only the reload-loop guard is lost.
   }
-}
-
-// The markup the previous page was showing when it reloaded for an update, if
-// this load is that reload. Read once; the stash is cleared so a later manual
-// refresh plays the normal entrance.
-export function takeReloadStash(): string | null {
-  const html = storageGet(STASH_KEY);
-  storageSet(STASH_KEY, null);
-  return html;
 }
 
 async function fetchLiveBuild(): Promise<string | null> {
@@ -76,9 +62,8 @@ function busy(container: HTMLElement): boolean {
   return document.getAnimations().some((a) => a.playState === 'running');
 }
 
-// Starts watching for new deploys. `currentHtml` returns the markup on screen
-// now, so the reloaded page can paint it again before its first fetch lands.
-export function watchForNewBuild(container: HTMLElement, currentHtml: () => string) {
+// Starts watching for new deploys.
+export function watchForNewBuild(container: HTMLElement) {
   // `vite dev` has no version.json and reloads itself anyway.
   if (import.meta.env.DEV) return;
 
@@ -87,8 +72,6 @@ export function watchForNewBuild(container: HTMLElement, currentHtml: () => stri
 
   function reloadNow() {
     storageSet(TRIED_KEY, pending);
-    const html = currentHtml();
-    if (html) storageSet(STASH_KEY, html);
     location.reload();
   }
 
