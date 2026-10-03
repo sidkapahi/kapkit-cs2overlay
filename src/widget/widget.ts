@@ -13,6 +13,7 @@ import {
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
 import { createNumberAnimator, playIntro } from './animateNumbers';
+import { watchForNewBuild } from './autoReload';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -218,6 +219,9 @@ async function init() {
   window.addEventListener('pageshow', refreshOnWake);
   window.addEventListener('focus', refreshOnWake);
   window.addEventListener('online', refreshOnWake);
+
+  // Reload onto a new deploy when one goes live.
+  watchForNewBuild(container);
 }
 
 init();
