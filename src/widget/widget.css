@@ -451,32 +451,32 @@ number-flow {
    ticks in left to right, while the numbers roll up from zero. Every element
    ends at its normal style, so dropping the class afterwards changes nothing. */
 @media (prefers-reduced-motion: no-preference) {
-  .intro .widget { animation: w-in-card 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .widget { animation: w-in-card 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .intro .avatar,
-  .intro .faceit-rank svg { animation: w-in-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 100ms both; }
-  .intro .faceit-pos { animation: w-in-pos 500ms cubic-bezier(0.34, 1.56, 0.64, 1) 350ms both; }
-  .intro .name { animation: w-in-left 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms both; }
-  .intro .badge-svg { animation: w-in-wipe 550ms cubic-bezier(0.65, 0, 0.35, 1) 150ms both; }
-  .intro .stat-lbl { animation: w-in-up 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 250ms both; }
-  .intro .stat:nth-child(2) .stat-lbl { animation-delay: 320ms; }
-  .intro .stat:nth-child(3) .stat-lbl { animation-delay: 390ms; }
-  .intro .stat:nth-child(4) .stat-lbl { animation-delay: 460ms; }
-  .intro .stat:nth-child(5) .stat-lbl { animation-delay: 530ms; }
-  .intro .stat:nth-child(6) .stat-lbl { animation-delay: 600ms; }
-  .intro .wl-letter { animation: w-in-left 450ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms both; }
-  .intro .wl-loss .wl-letter { animation-delay: 380ms; }
-  .intro .hist-letters > * { animation: w-in-up 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  .intro .hist-letters > :nth-child(1) { animation-delay: 350ms; }
-  .intro .hist-letters > :nth-child(2) { animation-delay: 400ms; }
-  .intro .hist-letters > :nth-child(3) { animation-delay: 450ms; }
-  .intro .hist-letters > :nth-child(4) { animation-delay: 500ms; }
-  .intro .hist-letters > :nth-child(5) { animation-delay: 550ms; }
-  .intro .hist-letters > :nth-child(6) { animation-delay: 600ms; }
-  .intro .hist-letters > :nth-child(7) { animation-delay: 650ms; }
-  .intro .hist-letters > :nth-child(8) { animation-delay: 700ms; }
-  .intro .hist-letters > :nth-child(9) { animation-delay: 750ms; }
-  .intro .hist-letters > :nth-child(10) { animation-delay: 800ms; }
-  .intro .hist-brand { animation: w-in-fade 500ms ease-out 600ms both; }
+  .intro .faceit-rank svg { animation: w-in-pop 1500ms cubic-bezier(0.34, 1.56, 0.64, 1) 250ms both; }
+  .intro .faceit-pos { animation: w-in-pos 1250ms cubic-bezier(0.34, 1.56, 0.64, 1) 875ms both; }
+  .intro .name { animation: w-in-left 1250ms cubic-bezier(0.2, 0.8, 0.2, 1) 375ms both; }
+  .intro .badge-svg { animation: w-in-wipe 1375ms cubic-bezier(0.65, 0, 0.35, 1) 375ms both; }
+  .intro .stat-lbl { animation: w-in-up 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) 625ms both; }
+  .intro .stat:nth-child(2) .stat-lbl { animation-delay: 800ms; }
+  .intro .stat:nth-child(3) .stat-lbl { animation-delay: 975ms; }
+  .intro .stat:nth-child(4) .stat-lbl { animation-delay: 1150ms; }
+  .intro .stat:nth-child(5) .stat-lbl { animation-delay: 1325ms; }
+  .intro .stat:nth-child(6) .stat-lbl { animation-delay: 1500ms; }
+  .intro .wl-letter { animation: w-in-left 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) 750ms both; }
+  .intro .wl-loss .wl-letter { animation-delay: 950ms; }
+  .intro .hist-letters > * { animation: w-in-up 875ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .hist-letters > :nth-child(1) { animation-delay: 875ms; }
+  .intro .hist-letters > :nth-child(2) { animation-delay: 1000ms; }
+  .intro .hist-letters > :nth-child(3) { animation-delay: 1125ms; }
+  .intro .hist-letters > :nth-child(4) { animation-delay: 1250ms; }
+  .intro .hist-letters > :nth-child(5) { animation-delay: 1375ms; }
+  .intro .hist-letters > :nth-child(6) { animation-delay: 1500ms; }
+  .intro .hist-letters > :nth-child(7) { animation-delay: 1625ms; }
+  .intro .hist-letters > :nth-child(8) { animation-delay: 1750ms; }
+  .intro .hist-letters > :nth-child(9) { animation-delay: 1875ms; }
+  .intro .hist-letters > :nth-child(10) { animation-delay: 2000ms; }
+  .intro .hist-brand { animation: w-in-fade 1250ms ease-out 1500ms both; }
 }
 @keyframes w-in-card { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
 @keyframes w-in-pop  { from { opacity: 0; transform: scale(0.5); } }
