@@ -80,6 +80,8 @@ const LIVE_PLATFORM_MARKS: Record<string, string> = {
 // one to the other when the URL is copied.
 const ICON_COPY = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>`;
 const ICON_CHECK = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,0,1,17-17L96,183.51,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>`;
+// Phosphor "DotsSixVertical" (bold) — the grip on the drag-into-OBS handle.
+const ICON_GRIP = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M108,60A16,16,0,1,1,92,44,16,16,0,0,1,108,60Zm56,16a16,16,0,1,0-16-16A16,16,0,0,0,164,76ZM92,112a16,16,0,1,0,16,16A16,16,0,0,0,92,112Zm72,0a16,16,0,1,0,16,16A16,16,0,0,0,164,112ZM92,180a16,16,0,1,0,16,16A16,16,0,0,0,92,180Zm72,0a16,16,0,1,0,16,16A16,16,0,0,0,164,180Z"/></svg>`;
 const ICON_WARNING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>`;
 
 // Prompt shown in the preview before a Steam ID resolves. Both providers are
@@ -161,6 +163,71 @@ function getWidgetUrl(): string {
   return `${base}/widget/?${params.toString()}`;
 }
 
+// OBS reads `layer-width` / `layer-height` / `layer-name` from a URL dropped
+// onto its canvas, sizes the new Browser Source from them, and strips them
+// from the saved URL. Pasting the URL into a source's settings ignores them.
+const OBS_LAYER_NAME = "CS2 Stats Overlay";
+// Extra room around the measured card. The widget's background is transparent,
+// so the slack is invisible but covers small font-rendering differences in OBS.
+const OBS_SIZE_PAD = 16;
+
+// The overlay's real size for the current settings and data, or null until a
+// profile has loaded. Rendered off-screen rather than read from the preview,
+// because the preview scales the card, clamps long names and can squeeze it
+// into a narrow panel; this matches what the overlay page lays out.
+function measureOverlaySize(): { width: number; height: number } | null {
+  if (!currentConfig.steamId) return null;
+  const slot = slots[currentConfig.provider];
+  if (slot?.status !== "ok") return null;
+
+  let box = document.getElementById("obs-measure");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "obs-measure";
+    box.setAttribute("aria-hidden", "true");
+    box.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:max-content;visibility:hidden;pointer-events:none;contain:layout style;";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = renderWidget(currentConfig, slot.data);
+  const widget = box.querySelector<HTMLElement>(".widget");
+  const rect = widget?.getBoundingClientRect();
+  box.innerHTML = "";
+  if (!rect || rect.width === 0 || rect.height === 0) return null;
+  return {
+    width: Math.ceil(rect.width) + OBS_SIZE_PAD,
+    height: Math.ceil(rect.height) + OBS_SIZE_PAD,
+  };
+}
+
+function getObsDragUrl(size: { width: number; height: number }): string {
+  // Spaces as %20, not URLSearchParams' "+": OBS reads the name with Qt's
+  // QUrlQuery, which leaves "+" as a literal plus.
+  return (
+    `${getWidgetUrl()}&layer-name=${encodeURIComponent(OBS_LAYER_NAME)}` +
+    `&layer-width=${size.width}&layer-height=${size.height}`
+  );
+}
+
+// Keeps the drag-into-OBS handle's link and size readout in step with the
+// current settings and data. Disabled until a profile has loaded.
+function updateObsDragLink() {
+  const link = document.getElementById("obs-drag") as HTMLAnchorElement | null;
+  if (!link) return;
+  const sizeEl = link.querySelector(".obs-drag-size");
+  const size = measureOverlaySize();
+  link.classList.toggle("is-disabled", !size);
+  link.setAttribute("aria-disabled", String(!size));
+  link.draggable = !!size;
+  if (size) {
+    link.href = getObsDragUrl(size);
+    if (sizeEl) sizeEl.textContent = `${size.width} × ${size.height}`;
+  } else {
+    link.removeAttribute("href");
+    if (sizeEl) sizeEl.textContent = "";
+  }
+}
+
 // Never render the widget larger than natural size in the preview; fitPreview
 // only ever scales further *down* to fit the (responsive) preview panel.
 const MAX_PREVIEW_SCALE = 1;
@@ -224,6 +291,7 @@ function renderPreview() {
     const html = renderWidget(currentConfig, slot.data);
     animatePreview(body, html, key, fitPreview);
     shownKey = key;
+    updateObsDragLink();
     return;
   }
   if (slot?.status === "loading" || (resolving && !error)) {
@@ -240,6 +308,7 @@ function renderPreview() {
   }
   shownKey = "";
   fitPreview();
+  updateObsDragLink();
 }
 
 function updateGeneratedUrl() {
@@ -252,6 +321,7 @@ function updateGeneratedUrl() {
   // Dim the whole export bar until there's a real widget URL to hand off.
   const bar = document.getElementById("exportbar");
   if (bar) bar.classList.toggle("is-empty", !url);
+  updateObsDragLink();
 }
 
 // Turns whatever is in the Account box — a Steam64 ID, a Steam profile/vanity
@@ -1007,6 +1077,31 @@ function bindControls() {
     }
   });
 
+  const dragLink = document.getElementById("obs-drag") as HTMLAnchorElement;
+  dragLink.addEventListener("dragstart", (e) => {
+    // Measure again at the moment of the drag, so a font that finished loading
+    // since the last update is counted.
+    const size = measureOverlaySize();
+    if (!size || !e.dataTransfer) {
+      e.preventDefault();
+      return;
+    }
+    const url = getObsDragUrl(size);
+    e.dataTransfer.effectAllowed = "copyLink";
+    e.dataTransfer.setData("text/uri-list", url);
+    e.dataTransfer.setData("text/plain", url);
+    trackEvent("widget_url_dragged", configEventProps(currentConfig));
+  });
+  // A click would just open the overlay in this tab; nudge toward dragging.
+  dragLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    dragLink.classList.remove("nudge");
+    void dragLink.offsetWidth;
+    dragLink.classList.add("nudge");
+  });
+  // Web fonts change the card's size once they arrive.
+  document.fonts?.addEventListener?.("loadingdone", updateObsDragLink);
+
   const zipBtn = document.getElementById("export-zip")!;
   zipBtn.addEventListener("click", () => {
     if (!currentConfig.steamId) return;
@@ -1069,7 +1164,7 @@ function mountConsentUi() {
             <li>That a Steam ID was entered — <strong>not the ID itself</strong></li>
             <li>The live channel you enter (a public Twitch, YouTube, or Kick handle) and which platform it is, if you use a live session</li>
             <li>Which widget settings you build (fonts, stats, colors, and so on)</li>
-            <li>When you copy the widget URL or export the ZIP</li>
+            <li>When you copy the widget URL, drag it into OBS, or export the ZIP</li>
             <li>Clicks on the GitHub, Ko-fi, and Twitch links</li>
             <li>Errors, so broken states can be found and fixed</li>
           </ul>
@@ -1415,6 +1510,10 @@ function init() {
               <input type="text" id="generated-url" class="url-input" readonly placeholder="Enter a Steam ID to generate the URL">
               <button type="button" id="copy-url" class="icon-btn" aria-label="Copy URL"><span class="icon-copy">${ICON_COPY}</span><span class="icon-check">${ICON_CHECK}</span></button>
             </div>
+          </div>
+          <div class="export-obs">
+            <label class="field-label">OBS Studio</label>
+            <a id="obs-drag" class="obs-drag is-disabled" aria-disabled="true" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown."><span class="obs-grip">${ICON_GRIP}</span><span class="obs-drag-label">DRAG INTO OBS</span><span class="obs-drag-size"></span></a>
           </div>
           <div class="export-zip">
             <label class="field-label">Custom Widget</label>

@@ -993,6 +993,7 @@ select.field-input option {
 }
 
 .exportbar.is-empty .export-url,
+.exportbar.is-empty .export-obs,
 .exportbar.is-empty .export-zip {
   opacity: 0.24;
   pointer-events: none;
@@ -1100,6 +1101,82 @@ select.field-input option {
   transform: scale(1);
 }
 
+/* Drag-into-OBS handle: dropping it on the OBS canvas creates a Browser
+   Source already sized to the overlay (layer-width / layer-height). */
+.export-obs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.obs-drag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px 0 12px;
+  background: var(--control);
+  border: 1px dashed var(--control-border);
+  border-radius: var(--radius-field);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+  transition: filter 0.15s;
+}
+
+.obs-drag:hover:not(.is-disabled) {
+  filter: brightness(1.2);
+}
+
+.obs-drag:active:not(.is-disabled) {
+  cursor: grabbing;
+}
+
+.obs-drag.is-disabled {
+  cursor: not-allowed;
+  -webkit-user-drag: none;
+}
+
+.obs-grip {
+  display: inline-flex;
+  color: var(--icon-muted);
+}
+
+.obs-grip svg {
+  width: 18px;
+  height: 18px;
+}
+
+.obs-drag-size {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.obs-drag-size:empty {
+  display: none;
+}
+
+/* Clicked instead of dragged: a quick shake says "drag me". */
+.obs-drag.nudge {
+  animation: obs-nudge 0.4s ease;
+}
+
+@keyframes obs-nudge {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
 .export-zip {
   display: flex;
   flex-direction: column;
@@ -1195,6 +1272,11 @@ select.field-input option {
 
   .export-zip .zip-btn {
     width: 100%;
+  }
+
+  /* There's no OBS canvas to drop onto on a phone or tablet. */
+  .export-obs {
+    display: none;
   }
 }
 
