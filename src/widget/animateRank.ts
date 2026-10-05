@@ -26,7 +26,7 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 // Total length of the longest sequence below, after which the copies are removed.
-const RANK_MS = 1500;
+const RANK_MS = 2250;
 
 interface RankState {
   rank: number;
@@ -79,7 +79,7 @@ function rollNumber(el: HTMLElement, dir: 1 | -1, out: boolean, delay: number) {
   const off = { transform: `translateY(${dir * (out ? -45 : 45)}%) scale(0.7)`, opacity: 0 };
   const on = { transform: 'none', opacity: 1 };
   el.firstElementChild?.animate(out ? [on, off] : [off, on], {
-    duration: out ? 280 : 450,
+    duration: out ? 420 : 675,
     delay,
     easing: out ? 'cubic-bezier(0.5, 0, 0.75, 0)' : SPRING,
     fill: out ? 'forwards' : 'backwards',
@@ -107,14 +107,14 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
     const a = ARC_END[from.rank];
     const b = ARC_END[to.rank];
     fx.append(under, over);
-    if (up) sweep(over, sameColor ? a : 0, b, 150, 650);
-    else sweep(over, a, sameColor ? b : 0, 150, 650);
+    if (up) sweep(over, sameColor ? a : 0, b, 225, 975);
+    else sweep(over, a, sameColor ? b : 0, 225, 975);
 
     const oldNum = layer(from.svg, 'num');
     const newNum = layer(to.svg, 'num');
     fx.append(oldNum, newNum);
     rollNumber(oldNum, up ? 1 : -1, true, 0);
-    rollNumber(newNum, up ? 1 : -1, false, 520);
+    rollNumber(newNum, up ? 1 : -1, false, 780);
   } else {
     // Into or out of Challenger: swap the emblems.
     const oldDial = layer(from.svg, 'all');
@@ -127,7 +127,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
           ? { transform: 'scale(0.4) rotate(-120deg)', opacity: 0 }
           : { transform: 'translateY(14%) scale(0.75)', opacity: 0 },
       ],
-      { duration: 380, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' },
+      { duration: 570, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' },
     );
     newDial.animate(
       [
@@ -136,7 +136,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
           : { transform: 'translateY(-14%) scale(0.75)', opacity: 0 },
         { transform: 'none', opacity: 1 },
       ],
-      { duration: 650, delay: 280, easing: SPRING, fill: 'backwards' },
+      { duration: 975, delay: 420, easing: SPRING, fill: 'backwards' },
     );
   }
 
@@ -149,7 +149,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
         { transform: 'translateX(-50%) scale(0.5)', opacity: 0 },
         { transform: 'translateX(-50%)', opacity: 1 },
       ],
-      { duration: 500, delay: 650, easing: SPRING, fill: 'backwards' },
+      { duration: 750, delay: 975, easing: SPRING, fill: 'backwards' },
     );
   } else if (!pos && from.pos) {
     const tmp = document.createElement('div');
@@ -162,7 +162,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
           { transform: 'translateX(-50%)', opacity: 1 },
           { transform: 'translateX(-50%) translateY(6px) scale(0.5)', opacity: 0 },
         ],
-        { duration: 300, easing: 'ease-in', fill: 'forwards' },
+        { duration: 450, easing: 'ease-in', fill: 'forwards' },
       )
       .finished.then(
         () => ghost.remove(),
@@ -179,7 +179,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
         { transform: 'scale(1.14)', filter: `drop-shadow(0 0 10px ${to.color})`, offset: 0.4 },
         { transform: 'none', filter: `drop-shadow(0 0 0 ${to.color})` },
       ],
-      { duration: 500, delay: 820, easing: EASE_OUT },
+      { duration: 750, delay: 1230, easing: EASE_OUT },
     );
     const ring = document.createElement('div');
     ring.className = 'rank-fx-ring';
@@ -192,7 +192,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
         { transform: 'scale(0.9)', opacity: 0.9 },
         { transform: 'scale(1.4)', opacity: 0 },
       ],
-      { duration: 650, delay: 820, easing: EASE_OUT },
+      { duration: 975, delay: 1230, easing: EASE_OUT },
     );
   } else {
     fx.animate(
@@ -203,7 +203,7 @@ function playRankChange(rankEl: HTMLElement, svg: SVGElement, from: RankState, t
         { transform: 'translateY(1px) rotate(-2deg)', offset: 0.75 },
         { transform: 'none' },
       ],
-      { duration: 480, delay: 800, easing: 'ease-out' },
+      { duration: 720, delay: 1200, easing: 'ease-out' },
     );
   }
 
@@ -239,8 +239,8 @@ export function createRankAnimator() {
     // The ELO beside the dial shares its colour, so fade it along.
     const elo = [...root.querySelectorAll<HTMLElement>('.faceit-elo')].find((el) => !el.closest('.slot-ghost'));
     elo?.animate([{ color: before.color }, { color: cur.color }], {
-      duration: 600,
-      delay: 250,
+      duration: 900,
+      delay: 375,
       easing: 'ease-in-out',
       fill: 'backwards',
     });
@@ -252,7 +252,7 @@ export function createRankAnimator() {
       fx.classList.add('rank-fx');
       fx.setAttribute('aria-hidden', 'true');
       svg.after(fx);
-      fx.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, easing: 'ease-in-out', fill: 'forwards' })
+      fx.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 900, easing: 'ease-in-out', fill: 'forwards' })
         .finished.then(
           () => fx.remove(),
           () => fx.remove(),
