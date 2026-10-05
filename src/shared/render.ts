@@ -76,10 +76,11 @@ function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' 
 const DIGITS = '0123456789'.split('');
 const ghosts = (pattern: string) => DIGITS.map((d) => pattern.replace(/#/g, d));
 
-// The widest value each number reserves room for: a five-digit rating, a
-// three-digit change, two-digit W/L counts, and per stat its widest normal
+// The widest value each number reserves room for: a five-digit Premier rating,
+// a four-digit FACEIT ELO, a three-digit change, two-digit W/L counts, and per stat its widest normal
 // reading (ADR and win % can reach three digits; K/D is always "0.00").
 const RATING_GHOSTS = ghosts('##,###');
+const ELO_GHOSTS = ghosts('#,###');
 const DIFF_GHOSTS = ghosts('###');
 const WL_GHOSTS = ghosts('##');
 const STAT_GHOSTS: Record<StatKey, string[]> = {
@@ -124,7 +125,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // Challenger red / #1–#3 medal colour.
     const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
     ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
-    ratingGhosts = RATING_GHOSTS.map((g) => `<span class="rating-plain faceit-elo">${g}</span>`);
+    ratingGhosts = ELO_GHOSTS.map((g) => `<span class="rating-plain faceit-elo">${g}</span>`);
   } else if (config.showBadge) {
     ratingHtml = `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
     ratingGhosts = ['<div class="rating-badge"></div>'];
@@ -144,7 +145,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     diffHtml = `<span class="rating-diff ${cls}">${DIFF_ARROW}<span${numAttrs('diff', abs)}>${abs}</span></span>`;
   }
   // The rating and the change each sit in a fixed slot sized for a five-digit
-  // rating and a three-digit change, so the widget keeps one size as the numbers
+  // rating (four for FACEIT ELO) and a three-digit change, so the widget keeps one size as the numbers
   // roll and the change arrow stays put instead of sliding with the rating's
   // width. The change slot is there whenever the change is on, even at 0.
   const ratingSlot = numSlot(ratingHtml, ratingGhosts);
