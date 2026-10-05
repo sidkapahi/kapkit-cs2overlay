@@ -167,10 +167,6 @@ function getWidgetUrl(): string {
 // onto its canvas, sizes the new Browser Source from them, and strips them
 // from the saved URL. Pasting the URL into a source's settings ignores them.
 const OBS_LAYER_NAME = "CS2 Stats Overlay";
-// Extra room around the measured card. The widget's background is transparent,
-// so the slack is invisible but covers small font-rendering differences in OBS.
-const OBS_SIZE_PAD = 16;
-
 // The overlay's real size for the current settings and data, or null until a
 // profile has loaded. Rendered off-screen rather than read from the preview,
 // because the preview scales the card, clamps long names and can squeeze it
@@ -194,10 +190,9 @@ function measureOverlaySize(): { width: number; height: number } | null {
   const rect = widget?.getBoundingClientRect();
   box.innerHTML = "";
   if (!rect || rect.width === 0 || rect.height === 0) return null;
-  return {
-    width: Math.ceil(rect.width) + OBS_SIZE_PAD,
-    height: Math.ceil(rect.height) + OBS_SIZE_PAD,
-  };
+  // Exact fit: rounded up only to whole pixels. Numbers reserve their widest
+  // width, so the card can't outgrow this on stream.
+  return { width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
 }
 
 function getObsDragUrl(size: { width: number; height: number }): string {
