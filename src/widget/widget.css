@@ -413,7 +413,9 @@ body {
 
 .flag {
   height: 22px;
-  width: auto;
+  /* Fixed 4:3 width rather than auto, so the card has its final width before
+     the flag image loads (and the drag-into-OBS size measures it right). */
+  width: calc(22px * 4 / 3);
   border-radius: 4px;
   flex-shrink: 0;
   /* A hairline keeps a white/light flag legible on the dark widget. */
