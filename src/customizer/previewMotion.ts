@@ -11,7 +11,7 @@ import { createNumberAnimator, playIntro, reducedMotion } from '../widget/animat
 // entrance instead.
 
 const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
-const RESIZE_MS = 675;
+const RESIZE_MS = 752;
 
 // Top-level pieces tracked between renders: ones that stay slide to their new
 // spot, ones that appear fade in. They don't nest, so a slide never compounds
@@ -163,7 +163,7 @@ export function createPreviewAnimator() {
             { opacity: 0, transform: 'scale(0.85)' },
             { opacity: 1, transform: 'none' },
           ],
-          { duration: RESIZE_MS, easing: EASE, delay: 180, fill: 'backwards' },
+          { duration: RESIZE_MS, easing: EASE, delay: 200, fill: 'backwards' },
         );
         return;
       }
@@ -189,7 +189,7 @@ export function createPreviewAnimator() {
       const el = [...widget.querySelectorAll<HTMLElement>('.rating-plain, .rating-badge-text')].find(
         (e) => !e.closest('.slot-ghost'),
       );
-      el?.animate([{ color: oldColor }, { color: newColor }], { duration: 900, easing: 'ease-in-out' });
+      el?.animate([{ color: oldColor }, { color: newColor }], { duration: 1002, easing: 'ease-in-out' });
     }
 
     // Morph the card's background from its old size to its new one: a plate

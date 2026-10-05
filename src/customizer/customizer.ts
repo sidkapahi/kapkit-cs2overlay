@@ -832,7 +832,7 @@ function syncCornerRadius() {
 
 // Elements whose corners change with the radius preset.
 const RADIUS_MORPH_SELECTORS = [".widget"];
-const RADIUS_MORPH_MS = 420;
+const RADIUS_MORPH_MS = 468;
 
 // The radius an element actually renders with. The pill preset is 9999px, which
 // the browser clamps to half the box — animating to/from 9999 would snap, so we

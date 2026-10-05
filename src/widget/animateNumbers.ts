@@ -14,14 +14,14 @@ const NUMBER_FORMATS: Record<string, Format> = {
   fixed2: { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 },
 };
 
-// NumberFlow's digit roll and fade, 1.5x its defaults (900ms / 450ms) to match
+// NumberFlow's digit roll and fade, 1.67x its defaults (900ms / 450ms) to match
 // the pace of the other animations, on its own easing curves.
-const ROLL_TIMING = { ...NumberFlow.defaultProps.transformTiming, duration: 1350 };
-const FADE_TIMING = { ...NumberFlow.defaultProps.opacityTiming, duration: 675 };
+const ROLL_TIMING = { ...NumberFlow.defaultProps.transformTiming, duration: 1503 };
+const FADE_TIMING = { ...NumberFlow.defaultProps.opacityTiming, duration: 752 };
 
 // How long the first-load entrance (.intro in widget.css) runs, with headroom
 // for the longest delay + duration there.
-const INTRO_MS = 2250;
+const INTRO_MS = 2505;
 
 // Springy ease (slight overshoot) for the rating-change arrow.
 const ARROW_EASING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
@@ -77,16 +77,16 @@ export function createNumberAnimator() {
           { transform: 'rotate(45deg) scale(0.4)', opacity: 0 },
           { transform: `rotate(${deg}deg) scale(1)`, opacity: 1 },
         ],
-        { duration: 1050, easing: ARROW_EASING, delay: 225, fill: 'backwards' },
+        { duration: 1169, easing: ARROW_EASING, delay: 250, fill: 'backwards' },
       );
       return;
     }
     // Gain ↔ loss: turn the arrow from its old direction and fade the tint.
     arrow.animate(
       [{ transform: `rotate(${fromDeg}deg)` }, { transform: `rotate(${deg}deg)` }],
-      { duration: 1050, easing: ARROW_EASING },
+      { duration: 1169, easing: ARROW_EASING },
     );
-    diff.animate([{ color: fromColor }, { color }], { duration: 750, easing: 'ease-out' });
+    diff.animate([{ color: fromColor }, { color }], { duration: 835, easing: 'ease-out' });
   }
 
   // Match history (newest on the left): when new matches come in, they slide in
@@ -113,14 +113,14 @@ export function createNumberAnimator() {
     // Every slot is the same width (letters share one width, ELO chips are
     // fixed), so one step is the distance between neighbours.
     const step = items[1].offsetLeft - items[0].offsetLeft;
-    const timing = { duration: 900, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' };
+    const timing = { duration: 1002, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' };
     items.forEach((el, i) => {
       const from = `translateX(${-shift * step}px)`;
       const frames =
         i < shift
           ? [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }]
           : [{ transform: from }, { transform: 'none' }];
-      el.animate(frames, { ...timing, delay: i < shift ? 120 : 0, fill: 'backwards' });
+      el.animate(frames, { ...timing, delay: i < shift ? 134 : 0, fill: 'backwards' });
     });
 
     // The matches that fell off the end aren't in the new markup: put a copy of
