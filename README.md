@@ -82,6 +82,14 @@ Steam account — no Leetify needed. Flip the **FACEIT** toggle in the customize
 
 ### Add it to OBS/Streamlabs OBS
 
+**Quickest:** drag the **Drag into OBS** button from the customizer onto your
+OBS scene. OBS creates a Browser Source already sized to fit your overlay,
+based on the stats, match history, font and name you've set up. The size is set
+when you drop it, so drag it in again (or resize the source) after changing
+what's shown.
+
+**Or by hand:**
+
 1. Add a new **Browser Source**
 2. Paste your widget URL
 3. Set the size to about **660 × 180** (adjust to taste)

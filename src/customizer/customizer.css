@@ -45,6 +45,9 @@
   /* Sidebar palette (Figma 156:3267 / 182:3). */
   --card: #141414;
   --card-border: #2b2b2b;
+  --field-border: #404040;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --obs-swap-ms: 280ms;
   --input-bg: #202020;
   --control: #2c2c2c;
   --control-border: #3a3a3a;
@@ -538,18 +541,37 @@ select.field-input option {
   background: var(--input-bg);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.12s, border-color 0.12s;
+  position: relative;
+  transition: background-color 0.12s, border-color 0.12s, transform 0.15s var(--ease-out);
+}
+
+.check input[type='checkbox']:active {
+  transform: scale(0.9);
+}
+
+/* The tick pops in (a little overshoot) when checked and shrinks away when
+   unchecked. */
+.check input[type='checkbox']::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  opacity: 0;
+  transform: scale(0.3) rotate(-15deg);
+  transition:
+    opacity 0.16s ease,
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.check input[type='checkbox']:checked::after {
+  opacity: 1;
+  transform: none;
 }
 
 .check input[type='checkbox']:hover {
   border-color: var(--line);
-}
-
-.check input[type='checkbox']:checked {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 15px 15px;
 }
 
 .check input[type='checkbox']:focus-visible {
@@ -655,6 +677,7 @@ select.field-input option {
 /* A #202020 track; the active segment is a raised #2c2c2c pill, the rest are
    transparent with muted text (Figma 182:59 / 182:196 / 182:121). */
 .seg-track {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -676,7 +699,9 @@ select.field-input option {
   font-size: 16px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  position: relative;
+  z-index: 1;
+  transition: color 0.2s, border-color 0.12s;
 }
 
 .seg:hover:not(:disabled):not(.selected) {
@@ -684,10 +709,33 @@ select.field-input option {
 }
 
 .seg.selected {
-  background: var(--control);
-  border-color: var(--control-border);
   color: #ffffff;
+}
+
+/* The raised pill behind the selected segment. It's one element per track
+   (added by initSegThumbs) that slides and resizes to whichever segment is
+   selected, rather than each segment painting its own. */
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--control);
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
   box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition:
+    transform 0.32s var(--ease-out),
+    width 0.32s var(--ease-out),
+    opacity 0.2s;
+}
+
+.seg-thumb.no-anim {
+  transition: none;
+}
+
+.seg-track:has(.seg.selected:disabled) .seg-thumb {
+  opacity: 0.5;
 }
 
 .seg:disabled {
@@ -705,7 +753,7 @@ select.field-input option {
   flex: none;
 }
 
-.provider-toggle .seg.selected {
+.provider-toggle .seg-thumb {
   border-color: #404040;
 }
 
@@ -981,18 +1029,18 @@ select.field-input option {
   flex-shrink: 0;
 }
 
-/* ---- Export bar ---------------------------------------------------------- */
+/* ---- Export bar (Figma 241:159) ----------------------------------------- */
 .exportbar {
   display: flex;
   align-items: flex-end;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 12px;
+  padding: 16px;
   background: var(--card);
-  border: 2px solid var(--card-border);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-card);
 }
 
-.exportbar.is-empty .export-url,
+.exportbar.is-empty .export-obs,
 .exportbar.is-empty .export-zip {
   opacity: 0.24;
   pointer-events: none;
@@ -1000,12 +1048,16 @@ select.field-input option {
 
 .exportbar .field-label {
   font-family: var(--font-ui);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 12px;
+  letter-spacing: -0.02em;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.export-url {
+.export-obs {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1013,38 +1065,123 @@ select.field-input option {
   gap: 8px;
 }
 
-.url-box {
+/* One field for both hand-offs: drag it onto the OBS canvas to create a
+   Browser Source already sized to the overlay (layer-width / layer-height),
+   or copy the plain link with the button at its end. Hovering the copy button
+   swaps the field to show the link it will copy (Figma 247:2). */
+.obs-field {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 44px;
+  min-width: 0;
+  padding: 12px 16px;
   background: var(--input-bg);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-field);
-  padding: 0 16px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: normal;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
 }
 
-.url-input {
+.obs-field:active:not(.is-disabled) {
+  cursor: grabbing;
+}
+
+.obs-field.is-disabled {
+  cursor: default;
+  -webkit-user-drag: none;
+}
+
+.obs-grip {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--icon-muted);
+}
+
+.obs-grip svg,
+.obs-field .icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The field's text swaps between three views (data-mode, set in
+   syncObsField): "drag" (DRAG INTO OBS + size), "link" (the URL + COPY LINK,
+   while the copy button is hovered) and "copied" (the URL + LINK COPIED).
+   Each view's labels share one grid cell and crossfade; the right-hand slot's
+   width is set from the incoming label so it eases between sizes. */
+.obs-main,
+.obs-side {
+  display: grid;
+  align-items: center;
+}
+
+.obs-main {
   flex: 1;
   min-width: 0;
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-family: var(--font-ui);
+  grid-template-columns: minmax(0, 1fr);
   font-weight: 700;
-  font-size: 14px;
+  color: var(--text);
+}
+
+.obs-side {
+  flex-shrink: 0;
+  justify-items: end;
+  overflow: hidden;
+  font-weight: 500;
+  color: var(--icon-muted);
+  transition: width var(--obs-swap-ms) var(--ease-out);
+}
+
+.obs-main > *,
+.obs-side > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.18s ease;
+  opacity: 0;
+  transform: translateY(0.45em);
+  transition:
+    opacity var(--obs-swap-ms) var(--ease-out),
+    transform var(--obs-swap-ms) var(--ease-out);
 }
 
-.url-input::placeholder {
-  color: var(--text-muted);
-  font-weight: 400;
+.obs-drag-size {
+  font-variant-numeric: tabular-nums;
 }
 
-/* While the copy confirmation shows, the URL text reads "Link Copied!". */
-.url-box.copied .url-input {
+/* Plain-text copy of the size readout, measured for the slot width only. */
+.obs-side > .obs-size-measure {
+  position: absolute;
+  visibility: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.obs-field[data-mode="drag"] .obs-drag-label,
+.obs-field[data-mode="drag"] .obs-drag-size,
+.obs-field[data-mode="link"] .obs-url,
+.obs-field[data-mode="link"] .obs-copy-label,
+.obs-field[data-mode="copied"] .obs-url,
+.obs-field[data-mode="copied"] .obs-copied-label {
+  opacity: 1;
+  transform: none;
+}
+
+.obs-copied-label {
+  display: inline;
+}
+
+.obs-copied-label {
   color: #6fce72;
+}
+
+.obs-field .icon-btn {
+  width: 20px;
+  height: 20px;
+  color: var(--text);
 }
 
 .icon-btn {
@@ -1090,14 +1227,25 @@ select.field-input option {
   color: #6fce72;
 }
 
-.url-box.copied .icon-copy {
+.obs-field.copied .icon-copy {
   opacity: 0;
   transform: scale(0.5);
 }
 
-.url-box.copied .icon-check {
+.obs-field.copied .icon-check {
   opacity: 1;
   transform: scale(1);
+}
+
+/* Clicked instead of dragged: a quick shake says "drag me". */
+.obs-field.nudge {
+  animation: obs-nudge 0.4s ease;
+}
+
+@keyframes obs-nudge {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .export-zip {
@@ -1107,41 +1255,22 @@ select.field-input option {
   flex-shrink: 0;
 }
 
-/* StreamElements mark used in place of the download icon inside the ZIP
-   button. */
-.se-logo {
-  display: inline-flex;
-}
-
-.se-logo svg {
-  height: 18px;
-  width: auto;
-  flex-shrink: 0;
-}
-
 .zip-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 18px;
-  background: var(--control);
-  border: 1px solid var(--control-border);
+  padding: 12px 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-field);
   color: var(--text);
   font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+  font-size: 16px;
+  line-height: normal;
+  white-space: nowrap;
   cursor: pointer;
   transition: filter 0.15s;
-}
-
-.zip-btn svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
 }
 
 .zip-btn:hover:not(:disabled) {
