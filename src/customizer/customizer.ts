@@ -590,7 +590,8 @@ function syncProviderToggle() {
 }
 
 // Swaps the provider-specific Data toggles: FACEIT gets Flag (its dial is
-// always shown, so no Styled Rank); Premier gets Styled Rank (no Flag).
+// always shown, so no Avatar or Styled Rank); Premier gets Avatar and Styled
+// Rank (no Flag).
 function syncProviderRows() {
   const faceit = currentConfig.provider === "faceit";
   const set = (id: string, hidden: boolean) => {
@@ -598,6 +599,7 @@ function syncProviderRows() {
     if (el) el.hidden = hidden;
   };
   set("flag-row", !faceit);
+  set("avatar-row", faceit);
   set("badge-row", faceit);
   syncHistoryModeUi();
 }
@@ -665,6 +667,7 @@ function bindHistoryMode() {
 // so they're bound separately.
 const checkboxMap: Record<string, keyof WidgetConfig> = {
   "show-flag": "showFlag",
+  "show-avatar": "showAvatar",
   "show-name": "showName",
   "show-change": "showChange",
   "show-history": "showMatchHistory",
@@ -830,6 +833,7 @@ function resetSection(section: string) {
   const d = DEFAULT_CONFIG;
   if (section === "data") {
     currentConfig.showFlag = d.showFlag;
+    currentConfig.showAvatar = d.showAvatar;
     currentConfig.showName = d.showName;
     currentConfig.showBadge = d.showBadge;
     currentConfig.showWinLoss = d.showWinLoss;
@@ -1477,6 +1481,7 @@ function init() {
             </div>
             <div class="check-grid">
               <label class="check" id="flag-row" hidden><input type="checkbox" id="show-flag"><span class="check-text">Flag</span></label>
+              <label class="check" id="avatar-row"><input type="checkbox" id="show-avatar"><span class="check-text">Avatar</span></label>
               <label class="check"><input type="checkbox" id="show-name"><span class="check-text">Name</span></label>
               <label class="check" id="badge-row"><input type="checkbox" id="show-badge"><span class="check-text">Styled Rank</span></label>
               <label class="check"><input type="checkbox" id="show-wl"><span class="check-text">W/L</span></label>
