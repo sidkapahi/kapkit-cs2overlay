@@ -213,6 +213,67 @@ function updateObsDragLink() {
   field.classList.toggle("is-disabled", !size);
   field.draggable = !!size;
   if (sizeEl) sizeEl.textContent = size ? `${size.width} x ${size.height}` : "";
+  syncObsField();
+}
+
+// Which view the OBS field shows (see .obs-field in customizer.css): the drag
+// view by default, the link while the copy button is hovered or focused, and
+// a "copied" confirmation for a beat after copying.
+let obsShowLink = false;
+let obsCopied = false;
+function syncObsField() {
+  const field = document.getElementById("obs-drag");
+  if (!field) return;
+  const mode = obsCopied ? "copied" : obsShowLink ? "link" : "drag";
+  field.dataset.mode = mode;
+  field.classList.toggle("copied", obsCopied);
+  // Size the right-hand slot to the incoming label so its width eases between
+  // "609 x 128", "COPY LINK" and "LINK COPIED".
+  const side = field.querySelector<HTMLElement>(".obs-side");
+  const label = side?.querySelector<HTMLElement>(
+    mode === "drag" ? ".obs-drag-size" : mode === "link" ? ".obs-copy-label" : ".obs-copied-label",
+  );
+  if (side && label) side.style.width = `${label.scrollWidth}px`;
+}
+
+// Gives each segmented toggle one sliding pill that follows its selected
+// segment. Watches the segments' classes (every toggle's own code just sets
+// .selected) and the track's size (it can start hidden, or reflow).
+function initSegThumbs() {
+  for (const track of document.querySelectorAll<HTMLElement>(".seg-track")) {
+    const thumb = document.createElement("span");
+    thumb.className = "seg-thumb no-anim";
+    thumb.setAttribute("aria-hidden", "true");
+    track.prepend(thumb);
+    let shown = false;
+    const place = () => {
+      const seg = track.querySelector<HTMLElement>(".seg.selected");
+      if (!seg || track.offsetWidth === 0) {
+        thumb.style.opacity = "0";
+        shown = false;
+        return;
+      }
+      // Jump into place the first time (or after being hidden) instead of
+      // sliding in from wherever it last was.
+      if (!shown) thumb.classList.add("no-anim");
+      thumb.style.opacity = "";
+      thumb.style.width = `${seg.offsetWidth}px`;
+      thumb.style.height = `${seg.offsetHeight}px`;
+      thumb.style.transform = `translate(${seg.offsetLeft}px, ${seg.offsetTop}px)`;
+      if (!shown) {
+        void thumb.offsetWidth;
+        thumb.classList.remove("no-anim");
+        shown = true;
+      }
+    };
+    new MutationObserver(place).observe(track, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    new ResizeObserver(place).observe(track);
+    place();
+  }
 }
 
 // Never render the widget larger than natural size in the preview; fitPreview
@@ -1043,16 +1104,29 @@ function bindControls() {
 
   const dragLink = document.getElementById("obs-drag")!;
   let copiedTimer = 0;
-  document.getElementById("copy-url")!.addEventListener("click", () => {
+  const copyBtn = document.getElementById("copy-url")!;
+  copyBtn.addEventListener("click", () => {
     if (!currentConfig.steamId) return;
     navigator.clipboard.writeText(getWidgetUrl());
     trackEvent("widget_url_copied", configEventProps(currentConfig));
     // Swap the icon to a check mark and "COPY LINK" to "LINK COPIED" for a
     // short beat.
-    dragLink.classList.add("copied");
+    obsCopied = true;
+    syncObsField();
     clearTimeout(copiedTimer);
-    copiedTimer = window.setTimeout(() => dragLink.classList.remove("copied"), 1500);
+    copiedTimer = window.setTimeout(() => {
+      obsCopied = false;
+      syncObsField();
+    }, 1500);
   });
+  const setShowLink = (on: boolean) => {
+    obsShowLink = on;
+    syncObsField();
+  };
+  copyBtn.addEventListener("pointerenter", () => setShowLink(true));
+  copyBtn.addEventListener("pointerleave", () => setShowLink(false));
+  copyBtn.addEventListener("focus", () => setShowLink(copyBtn.matches(":focus-visible")));
+  copyBtn.addEventListener("blur", () => setShowLink(false));
 
   dragLink.addEventListener("dragstart", (e) => {
     // Measure again at the moment of the drag, so a font that finished loading
@@ -1483,7 +1557,7 @@ function init() {
         <div class="exportbar is-empty" id="exportbar">
           <div class="export-obs">
             <span class="field-label">OBS Studio (Drag and drop onto OBS scene or copy browser source link)</span>
-            <div id="obs-drag" class="obs-field is-disabled" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
+            <div id="obs-drag" class="obs-field is-disabled" data-mode="drag" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
               <span class="obs-grip">${ICON_GRIP}</span>
               <span class="obs-main"><span class="obs-drag-label">DRAG INTO OBS</span><span class="obs-url" id="generated-url"></span></span>
               <span class="obs-side"><span class="obs-drag-size"></span><span class="obs-copy-label">COPY LINK</span><span class="obs-copied-label">LINK COPIED</span></span>
@@ -1506,6 +1580,7 @@ function init() {
 
   bindControls();
   syncControlsFromConfig();
+  initSegThumbs();
   bindScrollFades();
   mountConsentUi();
   mountTos();

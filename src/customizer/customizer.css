@@ -46,6 +46,8 @@
   --card: #141414;
   --card-border: #2b2b2b;
   --field-border: #404040;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --obs-swap-ms: 280ms;
   --input-bg: #202020;
   --control: #2c2c2c;
   --control-border: #3a3a3a;
@@ -539,18 +541,37 @@ select.field-input option {
   background: var(--input-bg);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.12s, border-color 0.12s;
+  position: relative;
+  transition: background-color 0.12s, border-color 0.12s, transform 0.15s var(--ease-out);
+}
+
+.check input[type='checkbox']:active {
+  transform: scale(0.9);
+}
+
+/* The tick pops in (a little overshoot) when checked and shrinks away when
+   unchecked. */
+.check input[type='checkbox']::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E") center / 15px 15px no-repeat;
+  opacity: 0;
+  transform: scale(0.3) rotate(-15deg);
+  transition:
+    opacity 0.16s ease,
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.check input[type='checkbox']:checked::after {
+  opacity: 1;
+  transform: none;
 }
 
 .check input[type='checkbox']:hover {
   border-color: var(--line);
-}
-
-.check input[type='checkbox']:checked {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath fill='white' fill-rule='evenodd' d='M11.467 3.727a.625.625 0 0 1 .181.865l-4.25 6.5a.625.625 0 0 1-.944.12l-2.75-2.5a.625.625 0 0 1 .841-.925l2.208 2.007 3.849-5.886a.625.625 0 0 1 .865-.181Z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 15px 15px;
 }
 
 .check input[type='checkbox']:focus-visible {
@@ -656,6 +677,7 @@ select.field-input option {
 /* A #202020 track; the active segment is a raised #2c2c2c pill, the rest are
    transparent with muted text (Figma 182:59 / 182:196 / 182:121). */
 .seg-track {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -677,7 +699,9 @@ select.field-input option {
   font-size: 16px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  position: relative;
+  z-index: 1;
+  transition: color 0.2s, border-color 0.12s;
 }
 
 .seg:hover:not(:disabled):not(.selected) {
@@ -685,10 +709,33 @@ select.field-input option {
 }
 
 .seg.selected {
-  background: var(--control);
-  border-color: var(--control-border);
   color: #ffffff;
+}
+
+/* The raised pill behind the selected segment. It's one element per track
+   (added by initSegThumbs) that slides and resizes to whichever segment is
+   selected, rather than each segment painting its own. */
+.seg-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--control);
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
   box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition:
+    transform 0.32s var(--ease-out),
+    width 0.32s var(--ease-out),
+    opacity 0.2s;
+}
+
+.seg-thumb.no-anim {
+  transition: none;
+}
+
+.seg-track:has(.seg.selected:disabled) .seg-thumb {
+  opacity: 0.5;
 }
 
 .seg:disabled {
@@ -706,7 +753,7 @@ select.field-input option {
   flex: none;
 }
 
-.provider-toggle .seg.selected {
+.provider-toggle .seg-thumb {
   border-color: #404040;
 }
 
@@ -1061,44 +1108,58 @@ select.field-input option {
   height: 20px;
 }
 
+/* The field's text swaps between three views (data-mode, set in
+   syncObsField): "drag" (DRAG INTO OBS + size), "link" (the URL + COPY LINK,
+   while the copy button is hovered) and "copied" (the URL + LINK COPIED).
+   Each view's labels share one grid cell and crossfade; the right-hand slot's
+   width is set from the incoming label so it eases between sizes. */
+.obs-main,
+.obs-side {
+  display: grid;
+  align-items: center;
+}
+
 .obs-main {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  grid-template-columns: minmax(0, 1fr);
   font-weight: 700;
   color: var(--text);
 }
 
 .obs-side {
   flex-shrink: 0;
+  justify-items: end;
+  overflow: hidden;
   font-weight: 500;
   color: var(--icon-muted);
+  transition: width var(--obs-swap-ms) var(--ease-out);
 }
 
-.obs-url,
-.obs-copy-label,
-.obs-copied-label,
-.obs-drag-size:empty {
-  display: none;
+.obs-main > *,
+.obs-side > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(0.45em);
+  transition:
+    opacity var(--obs-swap-ms) var(--ease-out),
+    transform var(--obs-swap-ms) var(--ease-out);
 }
 
-/* Link view: while the copy button is hovered or focused, and while the
-   "copied" confirmation shows. */
-.obs-field:has(#copy-url:hover, #copy-url:focus-visible) .obs-drag-label,
-.obs-field.copied .obs-drag-label,
-.obs-field:has(#copy-url:hover, #copy-url:focus-visible) .obs-drag-size,
-.obs-field.copied .obs-drag-size {
-  display: none;
+.obs-field[data-mode="drag"] .obs-drag-label,
+.obs-field[data-mode="drag"] .obs-drag-size,
+.obs-field[data-mode="link"] .obs-url,
+.obs-field[data-mode="link"] .obs-copy-label,
+.obs-field[data-mode="copied"] .obs-url,
+.obs-field[data-mode="copied"] .obs-copied-label {
+  opacity: 1;
+  transform: none;
 }
 
-.obs-field:has(#copy-url:hover, #copy-url:focus-visible) .obs-url,
-.obs-field.copied .obs-url {
-  display: inline;
-}
-
-.obs-field:has(#copy-url:hover, #copy-url:focus-visible):not(.copied) .obs-copy-label,
-.obs-field.copied .obs-copied-label {
+.obs-copied-label {
   display: inline;
 }
 
