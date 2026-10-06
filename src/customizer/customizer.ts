@@ -46,6 +46,7 @@ import {
   type StatKey,
   type WidgetConfig,
 } from "../shared/types";
+import NumberFlow from "number-flow";
 import { createPreviewAnimator } from "./previewMotion";
 import "../widget/widget.css";
 import "./customizer.css";
@@ -208,12 +209,29 @@ function getObsDragUrl(size: { width: number; height: number }): string {
 function updateObsDragLink() {
   const field = document.getElementById("obs-drag");
   if (!field) return;
-  const sizeEl = field.querySelector(".obs-drag-size");
   const size = measureOverlaySize();
   field.classList.toggle("is-disabled", !size);
   field.draggable = !!size;
-  if (sizeEl) sizeEl.textContent = size ? `${size.width} x ${size.height}` : "";
+  setObsSizeReadout(field, size);
   syncObsField();
+}
+
+// The "609 x 128" readout: each number is a NumberFlow that rolls to its new
+// value as settings change the overlay's size. A hidden plain-text copy gives
+// the readout's final width up front (NumberFlow eases its own width).
+function setObsSizeReadout(
+  field: HTMLElement,
+  size: { width: number; height: number } | null,
+) {
+  const sizeEl = field.querySelector<HTMLElement>(".obs-drag-size");
+  const measure = field.querySelector<HTMLElement>(".obs-size-measure");
+  if (!sizeEl || !measure) return;
+  sizeEl.hidden = !size;
+  measure.textContent = size ? `${size.width} x ${size.height}` : "";
+  if (!size) return;
+  const [w, h] = sizeEl.querySelectorAll<NumberFlow>("number-flow");
+  w.update(size.width);
+  h.update(size.height);
 }
 
 // Which view the OBS field shows (see .obs-field in customizer.css): the drag
@@ -231,7 +249,7 @@ function syncObsField() {
   // "609 x 128", "COPY LINK" and "LINK COPIED".
   const side = field.querySelector<HTMLElement>(".obs-side");
   const label = side?.querySelector<HTMLElement>(
-    mode === "drag" ? ".obs-drag-size" : mode === "link" ? ".obs-copy-label" : ".obs-copied-label",
+    mode === "drag" ? ".obs-size-measure" : mode === "link" ? ".obs-copy-label" : ".obs-copied-label",
   );
   if (side && label) side.style.width = `${label.scrollWidth}px`;
 }
@@ -1560,7 +1578,7 @@ function init() {
             <div id="obs-drag" class="obs-field is-disabled" data-mode="drag" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
               <span class="obs-grip">${ICON_GRIP}</span>
               <span class="obs-main"><span class="obs-drag-label">DRAG INTO OBS</span><span class="obs-url" id="generated-url"></span></span>
-              <span class="obs-side"><span class="obs-drag-size"></span><span class="obs-copy-label">COPY LINK</span><span class="obs-copied-label">LINK COPIED</span></span>
+              <span class="obs-side"><span class="obs-drag-size" hidden><number-flow class="obs-size-num"></number-flow> x <number-flow class="obs-size-num"></number-flow></span><span class="obs-size-measure" aria-hidden="true"></span><span class="obs-copy-label">COPY LINK</span><span class="obs-copied-label">LINK COPIED</span></span>
               <button type="button" id="copy-url" class="icon-btn" aria-label="Copy browser source link"><span class="icon-copy">${ICON_COPY}</span><span class="icon-check">${ICON_CHECK}</span></button>
             </div>
           </div>

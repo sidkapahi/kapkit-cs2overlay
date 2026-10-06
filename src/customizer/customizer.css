@@ -1149,6 +1149,17 @@ select.field-input option {
     transform var(--obs-swap-ms) var(--ease-out);
 }
 
+.obs-drag-size {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Plain-text copy of the size readout, measured for the slot width only. */
+.obs-side > .obs-size-measure {
+  position: absolute;
+  visibility: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
 .obs-field[data-mode="drag"] .obs-drag-label,
 .obs-field[data-mode="drag"] .obs-drag-size,
 .obs-field[data-mode="link"] .obs-url,
