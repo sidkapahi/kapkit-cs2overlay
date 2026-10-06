@@ -38,6 +38,7 @@ import {
   CORNER_RADII,
   DEFAULT_CONFIG,
   DEFAULT_STATS_BY_PROVIDER,
+  HISTORY_FALLBACK_RADIUS,
   PROVIDER_STATS,
   STAT_LABELS,
   STAT_MAX,
@@ -45,6 +46,7 @@ import {
   type Provider,
   type StatKey,
   type WidgetConfig,
+  radiusAllowed,
 } from "../shared/types";
 import NumberFlow from "number-flow";
 import { createPreviewAnimator } from "./previewMotion";
@@ -963,10 +965,13 @@ function bindBackground() {
 }
 
 // ---- Corner radius segmented toggle --------------------------------------
+// The 100 pill is disabled while Match History is on (see radiusAllowed).
 function syncCornerRadius() {
   const row = document.getElementById("corner-radius")!;
   for (const seg of row.querySelectorAll<HTMLButtonElement>(".seg")) {
-    seg.classList.toggle("selected", Number(seg.dataset.radius) === currentConfig.cornerRadius);
+    const r = Number(seg.dataset.radius) as CornerRadius;
+    seg.classList.toggle("selected", r === currentConfig.cornerRadius);
+    seg.disabled = !radiusAllowed(r, currentConfig.showMatchHistory);
   }
 }
 
@@ -1026,6 +1031,16 @@ function bindCornerRadius() {
     syncCornerRadius();
     morphPreviewRadius(renderPreview);
     updateGeneratedUrl();
+  });
+
+  // Turning Match History on while the pill is selected drops it to the fallback.
+  document.getElementById("show-history")!.addEventListener("change", () => {
+    if (!radiusAllowed(currentConfig.cornerRadius, currentConfig.showMatchHistory)) {
+      currentConfig.cornerRadius = HISTORY_FALLBACK_RADIUS;
+      morphPreviewRadius(renderPreview);
+      updateGeneratedUrl();
+    }
+    syncCornerRadius();
   });
 }
 
