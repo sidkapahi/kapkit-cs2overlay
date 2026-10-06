@@ -16,15 +16,18 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-// Directional arrows for the rating change (rank loss/gain). Recreated inline
-// from the Figma "ArrowUpRight" / "ArrowDownRight" icons so the exported widget
-// stays self-contained (no external asset). `currentColor` inherits the diff's
-// positive/negative tint. The viewBox is the full 48×48 design frame, so the
-// arrow keeps the padding that sits it inset in its box (icon ≈ 1.2× the number,
-// per .diff-arrow) and carries its built-in gap to the number — matching Figma
-// 70:1419 / 70:1413. To swap in a custom mark, replace the paths here.
-const DIFF_ARROW_UP = `<svg class="diff-arrow" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 36L36 12" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 12H36V31.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const DIFF_ARROW_DOWN = `<svg class="diff-arrow" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 12L36 36" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 36H36V16.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// Directional arrow for the rating change (rank loss/gain). Recreated inline
+// from the Figma "ArrowUpRight" icon so the exported widget stays
+// self-contained (no external asset). The loss arrow ("ArrowDownRight") is the
+// same mark turned 90° clockwise, so it's one SVG rotated in CSS
+// (.rating-diff.negative .diff-arrow), which lets the live widget swing it
+// between the two when a gain flips to a loss. `currentColor` inherits the
+// diff's positive/negative tint. The viewBox is the full 48×48 design frame, so
+// the arrow keeps the padding that sits it inset in its box (icon ≈ 1.2× the
+// number, per .diff-arrow) and carries its built-in gap to the number —
+// matching Figma 70:1419 / 70:1413. To swap in a custom mark, replace the
+// paths here.
+const DIFF_ARROW = `<svg class="diff-arrow" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 36L36 12" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 12H36V31.5" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 // The Premier rank emblem shown behind the rating when the badge is enabled — a
 // right-leaning parallelogram with the tier's deep fill and two bright "//"
@@ -58,6 +61,45 @@ function brandHtml(): string {
   return `<div class="hist-brand"><img class="hist-logo" src="${brandLogoSrc}" alt="kapKit"></div>`;
 }
 
+// Tags a numeric value so the live widget can roll it to its next value with
+// NumberFlow (see src/widget/animateNumbers.ts). `key` identifies the number
+// across renders; `fmt` names how it's formatted (see NUMBER_FORMATS there). The
+// span still holds the plain text, so the customizer preview (which doesn't
+// animate) is unchanged.
+function numAttrs(key: string, value: number, fmt: 'int' | 'grouped' | 'fixed2' = 'int'): string {
+  return ` data-flow="${key}" data-flow-value="${value}" data-flow-fmt="${fmt}"`;
+}
+
+// Ghost values for a number slot (see numSlot): the pattern with every `#`
+// filled by each digit in turn, so the slot fits the font's widest digit even in
+// a font without tabular figures.
+const DIGITS = '0123456789'.split('');
+const ghosts = (pattern: string) => DIGITS.map((d) => pattern.replace(/#/g, d));
+
+// The widest value each number reserves room for: a five-digit Premier rating,
+// a four-digit FACEIT ELO, a three-digit change, two-digit W/L counts, and per stat its widest normal
+// reading (ADR and win % can reach three digits; K/D is always "0.00").
+const RATING_GHOSTS = ghosts('##,###');
+const ELO_GHOSTS = ghosts('#,###');
+const DIFF_GHOSTS = ghosts('###');
+const WL_GHOSTS = ghosts('##');
+const STAT_GHOSTS: Record<StatKey, string[]> = {
+  kd: ghosts('#.##'),
+  avg: ghosts('##'),
+  aim: ghosts('##'),
+  winpct: ghosts('###'),
+  adr: ghosts('###'),
+  hs: ghosts('##'),
+};
+
+// Wraps a number in a fixed-size slot: invisible "ghost" copies of the widest
+// values it should hold share its grid cell, so the slot is as wide as the
+// widest of them (or the real value, if that's bigger). The number then never
+// changes the widget's size or nudges what comes after it as it updates.
+function numSlot(real: string, ghosts: string[], cls = 'num-slot'): string {
+  return `<span class="${cls}">${ghosts.map((g) => `<span class="slot-ghost" aria-hidden="true">${g}</span>`).join('')}${real}</span>`;
+}
+
 // Builds the full widget markup for a config + data pair. Shared by the live
 // widget and the customizer preview so both stay pixel-identical.
 export function renderWidget(config: WidgetConfig, data: PremierData): string {
@@ -73,16 +115,23 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // number. FACEIT: the ELO, tinted with the skill-level colour — the dial art
   // already carries the level, so the number sits beside it, not on a badge.
   const ratingText = formatRating(data.rating);
+  const ratingAttrs = numAttrs('rating', data.rating, 'grouped');
   let ratingHtml: string;
+  // Invisible stand-ins for the widest rating the slot has to fit (see numSlot).
+  // The badge is a fixed size, so it only needs its box.
+  let ratingGhosts: string[];
   if (isFaceit) {
     // ELO takes the same colour as the dial: the level's tier colour, or the
     // Challenger red / #1–#3 medal colour.
     const eloColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
-    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}">${ratingText}</span>`;
+    ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
+    ratingGhosts = ELO_GHOSTS.map((g) => `<span class="rating-plain faceit-elo">${g}</span>`);
+  } else if (config.showBadge) {
+    ratingHtml = `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
+    ratingGhosts = ['<div class="rating-badge"></div>'];
   } else {
-    ratingHtml = config.showBadge
-      ? `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text">${ratingText}</span></div>`
-      : `<span class="rating-plain">${ratingText}</span>`;
+    ratingHtml = `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
+    ratingGhosts = RATING_GHOSTS.map((g) => `<span class="rating-plain">${g}</span>`);
   }
 
   // Rating change (rank loss/gain) — the rank-point diff (Premier) or session
@@ -92,9 +141,21 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showChange && data.ratingDiff !== 0) {
     const up = data.ratingDiff > 0;
     const cls = up ? 'positive' : 'negative';
-    const arrow = up ? DIFF_ARROW_UP : DIFF_ARROW_DOWN;
-    diffHtml = `<span class="rating-diff ${cls}">${arrow}${Math.abs(data.ratingDiff)}</span>`;
+    const abs = Math.abs(data.ratingDiff);
+    diffHtml = `<span class="rating-diff ${cls}">${DIFF_ARROW}<span${numAttrs('diff', abs)}>${abs}</span></span>`;
   }
+  // The rating and the change each sit in a fixed slot sized for a five-digit
+  // rating (four for FACEIT ELO) and a three-digit change, so the widget keeps one size as the numbers
+  // roll and the change arrow stays put instead of sliding with the rating's
+  // width. The change slot is there whenever the change is on, even at 0.
+  const ratingSlot = numSlot(ratingHtml, ratingGhosts);
+  const diffSlot = config.showChange
+    ? numSlot(
+        diffHtml,
+        DIFF_GHOSTS.map((g) => `<span class="rating-diff positive">${DIFF_ARROW}<span>${g}</span></span>`),
+        'num-slot diff-slot',
+      )
+    : '';
 
   // Left slot. Premier: the player's avatar (real Steam avatar, or the default
   // blue "smiley" mark so a missing/private avatar still shows a face). FACEIT:
@@ -111,9 +172,13 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     const dial = faceitDialSvg(data.skillLevel, isChallenger, data.leaderboardPosition);
     const posHtml =
       isChallenger && data.leaderboardPosition != null
-        ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#${data.leaderboardPosition}</span>`
+        ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#<span${numAttrs('pos', data.leaderboardPosition)}>${data.leaderboardPosition}</span></span>`
         : '';
-    avatarHtml = `<div class="faceit-rank">${dial}${posHtml}</div>`;
+    // data-rank (1–10, or 11 for Challenger) and data-rank-color let the live
+    // widget animate a level up/down between renders (see animateRank.ts).
+    const rank = isChallenger ? 11 : Math.max(1, Math.min(10, Math.round(data.skillLevel ?? 1)));
+    const rankColor = faceitEloColor(data.skillLevel, isChallenger, data.leaderboardPosition);
+    avatarHtml = `<div class="faceit-rank" data-rank="${rank}" data-rank-color="${rankColor}">${dial}${posHtml}</div>`;
   } else {
     const avatarSrc = data.avatarUrl ? esc(data.avatarUrl) : defaultAvatarSrc;
     avatarHtml = config.showAvatar ? `<img class="avatar" src="${avatarSrc}" alt="">` : '';
@@ -136,8 +201,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showWinLoss) {
     wlHtml = `
     <div class="wl">
-      <div class="wl-pill wl-win"><span class="wl-letter">W</span><span class="wl-count">${data.wins}</span></div>
-      <div class="wl-pill wl-loss"><span class="wl-letter">L</span><span class="wl-count">${data.losses}</span></div>
+      <div class="wl-pill wl-win"><span class="wl-letter">W</span>${numSlot(`<span${numAttrs('wins', data.wins)}>${data.wins}</span>`, WL_GHOSTS, 'num-slot wl-count')}</div>
+      <div class="wl-pill wl-loss"><span class="wl-letter">L</span>${numSlot(`<span${numAttrs('losses', data.losses)}>${data.losses}</span>`, WL_GHOSTS, 'num-slot wl-count')}</div>
     </div>`;
   }
 
@@ -164,10 +229,13 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       hs: data.hsPct != null ? whole(data.hsPct * 100) : '—',
     };
     const cells = config.stats
-      .map(
-        (k) =>
-          `<div class="stat"><span class="stat-val">${statValues[k]}</span><span class="stat-lbl">${STAT_LABELS[k]}</span></div>`,
-      )
+      .map((k) => {
+        // Placeholders ("—") aren't numbers, so they just swap in statically.
+        const v = statValues[k];
+        const attrs = v === '—' ? '' : numAttrs(`stat-${k}`, Number(v), k === 'kd' ? 'fixed2' : 'int');
+        const val = numSlot(`<span${attrs}>${v}</span>`, STAT_GHOSTS[k], 'num-slot stat-val');
+        return `<div class="stat stat-${k}">${val}<span class="stat-lbl">${STAT_LABELS[k]}</span></div>`;
+      })
       .join('');
     statsHtml = `<div class="stats">${cells}</div>`;
   }
@@ -189,10 +257,13 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       .map((g) => {
         const cls = g.outcome === 'win' ? 'w' : g.outcome === 'tie' ? 't' : 'l';
         const lbl = g.outcome === 'win' ? 'W' : g.outcome === 'tie' ? 'T' : 'L';
-        if (!eloMode) return `<span class="${cls}">${lbl}</span>`;
+        // The match id lets the live widget slide a new match in on the left
+        // (see animateHistory in animateNumbers.ts).
+        const idAttr = g.id ? ` data-hist-id="${esc(g.id)}"` : '';
+        if (!eloMode) return `<span class="${cls}"${idAttr}>${lbl}</span>`;
         const d = g.eloChange;
         const text = d == null ? lbl : d > 0 ? `+${d}` : d < 0 ? `-${Math.abs(d)}` : '0';
-        return `<span class="hist-chip ${cls}">${text}</span>`;
+        return `<span class="hist-chip ${cls}"${idAttr}>${text}</span>`;
       })
       .join('');
     historyHtml = `
@@ -236,8 +307,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
           <div class="identity-text">
             ${nameHtml}
             <div class="rating-line">
-              ${ratingHtml}
-              ${diffHtml}
+              ${ratingSlot}
+              ${diffSlot}
             </div>
           </div>
         </div>
@@ -251,7 +322,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
 // Simple single-line state (loading / error / prompt) styled like the widget.
 export function renderMessage(title: string, value: string): string {
   return `
-    <div class="widget rank-gray no-badge no-avatar">
+    <div class="widget is-message rank-gray no-badge no-avatar">
       <div class="widget-main">
         <div class="identity">
           <div class="identity-text">

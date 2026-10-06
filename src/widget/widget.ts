@@ -12,6 +12,8 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
+import { createNumberAnimator, playIntro } from './animateNumbers';
+import { watchForNewBuild } from './autoReload';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -81,6 +83,12 @@ async function init() {
   let statsHealthy = true;
   // When the last live_heartbeat went out (ms epoch); 0 = none this load.
   let lastHeartbeat = 0;
+  // The markup last written to the page. render() runs on every live/stats poll,
+  // so skipping identical markup keeps an in-flight number animation (and the
+  // images) from being torn down when nothing actually changed.
+  let lastHtml = '';
+  // Rolls each changed number from its previous value instead of swapping it.
+  const animateNumbers = createNumberAnimator();
 
   // Renders whatever we currently know. In session mode it advances the session
   // from the newest live status + matches, then overrides the W/L pills with the
@@ -119,7 +127,14 @@ async function init() {
         data = { ...data, ratingDiff: lastData.rating - sessionState.startRating };
       }
     }
-    container.innerHTML = renderWidget(config, data);
+    const html = renderWidget(config, data);
+    if (html === lastHtml) return;
+    // The first real render (lastHtml still empty) also plays the entrance.
+    const first = !lastHtml;
+    lastHtml = html;
+    container.innerHTML = html;
+    if (first) playIntro(container);
+    animateNumbers(container);
   }
 
   const fetchStats = () =>
@@ -204,6 +219,9 @@ async function init() {
   window.addEventListener('pageshow', refreshOnWake);
   window.addEventListener('focus', refreshOnWake);
   window.addEventListener('online', refreshOnWake);
+
+  // Reload onto a new deploy when one goes live.
+  watchForNewBuild(container);
 }
 
 init();

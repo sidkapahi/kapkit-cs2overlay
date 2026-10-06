@@ -29,7 +29,6 @@ import {
   gitHubLogo,
   koFiLogo,
   kickMark,
-  streamElementsLogo,
   twitchLogo,
   twitchMark,
   youTubeMark,
@@ -49,6 +48,8 @@ import {
   type WidgetConfig,
   radiusAllowed,
 } from "../shared/types";
+import NumberFlow from "number-flow";
+import { createPreviewAnimator } from "./previewMotion";
 import "../widget/widget.css";
 import "./customizer.css";
 
@@ -64,7 +65,6 @@ const TWITCH_URL = "https://twitch.tv/kapowhi";
 const ICON_GITHUB = gitHubLogo;
 const ICON_KOFI = koFiLogo;
 const ICON_TWITCH = twitchLogo;
-const ICON_STREAMELEMENTS = streamElementsLogo;
 // Radix icons from the sidebar design (Figma 182:3): caret for the font/weight
 // dropdowns, globe for an empty link field, and the section reset arrow.
 const ICON_CARET = `<svg viewBox="0 0 15 15" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.135 6.158a.5.5 0 0 1 .707-.023L7.5 9.565l3.658-3.43a.5.5 0 0 1 .684.73l-4 3.75a.5.5 0 0 1-.684 0l-4-3.75a.5.5 0 0 1-.023-.707Z"/></svg>`;
@@ -77,10 +77,13 @@ const LIVE_PLATFORM_MARKS: Record<string, string> = {
   youtube: youTubeMark,
   kick: kickMark,
 };
-// Phosphor "Copy" and "Check" (bold weight) — the copy button crossfades from
-// one to the other when the URL is copied.
-const ICON_COPY = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z"/></svg>`;
+// Copy (from the Figma export bar, 247:16) and Phosphor "Check" (bold): the
+// copy button crossfades from one to the other when the link is copied.
+const ICON_COPY = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.875" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.125 13.125H16.875V3.125H6.875V6.875"/><path d="M13.125 6.875H3.125V16.875H13.125V6.875Z"/></svg>`;
 const ICON_CHECK = `<svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,0,1,17-17L96,183.51,215.51,63.51a12,12,0,0,1,17,17Z"/></svg>`;
+// Phosphor "DotsSixVertical" (from the Figma export bar, 247:12) — the grip on
+// the drag-into-OBS field.
+const ICON_GRIP = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8.125 4.6875C8.125 4.87292 8.07002 5.05418 7.967 5.20835C7.86399 5.36252 7.71757 5.48268 7.54627 5.55364C7.37496 5.62459 7.18646 5.64316 7.0046 5.60699C6.82275 5.57081 6.6557 5.48153 6.52459 5.35041C6.39348 5.2193 6.30419 5.05225 6.26801 4.8704C6.23184 4.68854 6.25041 4.50004 6.32136 4.32873C6.39232 4.15743 6.51248 4.01101 6.66665 3.908C6.82082 3.80498 7.00208 3.75 7.1875 3.75C7.43614 3.75 7.6746 3.84877 7.85041 4.02459C8.02623 4.2004 8.125 4.43886 8.125 4.6875ZM12.8125 5.625C12.9979 5.625 13.1792 5.57002 13.3333 5.467C13.4875 5.36399 13.6077 5.21757 13.6786 5.04627C13.7496 4.87496 13.7682 4.68646 13.732 4.5046C13.6958 4.32275 13.6065 4.1557 13.4754 4.02459C13.3443 3.89348 13.1773 3.80419 12.9954 3.76801C12.8135 3.73184 12.625 3.75041 12.4537 3.82136C12.2824 3.89232 12.136 4.01248 12.033 4.16665C11.93 4.32082 11.875 4.50208 11.875 4.6875C11.875 4.93614 11.9738 5.1746 12.1496 5.35041C12.3254 5.52623 12.5639 5.625 12.8125 5.625ZM7.1875 9.0625C7.00208 9.0625 6.82082 9.11748 6.66665 9.2205C6.51248 9.32351 6.39232 9.46993 6.32136 9.64124C6.25041 9.81254 6.23184 10.001 6.26801 10.1829C6.30419 10.3648 6.39348 10.5318 6.52459 10.6629C6.6557 10.794 6.82275 10.8833 7.0046 10.9195C7.18646 10.9557 7.37496 10.9371 7.54627 10.8661C7.71757 10.7952 7.86399 10.675 7.967 10.5208C8.07002 10.3667 8.125 10.1854 8.125 10C8.125 9.75136 8.02623 9.5129 7.85041 9.33709C7.6746 9.16127 7.43614 9.0625 7.1875 9.0625ZM12.8125 9.0625C12.6271 9.0625 12.4458 9.11748 12.2917 9.2205C12.1375 9.32351 12.0173 9.46993 11.9464 9.64124C11.8754 9.81254 11.8568 10.001 11.893 10.1829C11.9292 10.3648 12.0185 10.5318 12.1496 10.6629C12.2807 10.794 12.4477 10.8833 12.6296 10.9195C12.8115 10.9557 13 10.9371 13.1713 10.8661C13.3426 10.7952 13.489 10.675 13.592 10.5208C13.695 10.3667 13.75 10.1854 13.75 10C13.75 9.75136 13.6512 9.5129 13.4754 9.33709C13.2996 9.16127 13.0611 9.0625 12.8125 9.0625ZM7.1875 14.375C7.00208 14.375 6.82082 14.43 6.66665 14.533C6.51248 14.636 6.39232 14.7824 6.32136 14.9537C6.25041 15.125 6.23184 15.3135 6.26801 15.4954C6.30419 15.6773 6.39348 15.8443 6.52459 15.9754C6.6557 16.1065 6.82275 16.1958 7.0046 16.232C7.18646 16.2682 7.37496 16.2496 7.54627 16.1786C7.71757 16.1077 7.86399 15.9875 7.967 15.8333C8.07002 15.6792 8.125 15.4979 8.125 15.3125C8.125 15.0639 8.02623 14.8254 7.85041 14.6496C7.6746 14.4738 7.43614 14.375 7.1875 14.375ZM12.8125 14.375C12.6271 14.375 12.4458 14.43 12.2917 14.533C12.1375 14.636 12.0173 14.7824 11.9464 14.9537C11.8754 15.125 11.8568 15.3135 11.893 15.4954C11.9292 15.6773 12.0185 15.8443 12.1496 15.9754C12.2807 16.1065 12.4477 16.1958 12.6296 16.232C12.8115 16.2682 13 16.2496 13.1713 16.1786C13.3426 16.1077 13.489 15.9875 13.592 15.8333C13.695 15.6792 13.75 15.4979 13.75 15.3125C13.75 15.0639 13.6512 14.8254 13.4754 14.6496C13.2996 14.4738 13.0611 14.375 12.8125 14.375Z"/></svg>`;
 const ICON_WARNING = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 16H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>`;
 
 // Prompt shown in the preview before a Steam ID resolves. Both providers are
@@ -115,9 +118,27 @@ function configEventProps(
     livePlatform: config.livePlatform,
   };
 }
-let previewData: PremierData | null = null;
+// Both providers' data for the current Steam ID, fetched together as soon as
+// the account resolves, so flipping PREMIER | FACEIT shows cached data (and
+// animates the change) instead of a fresh load. Cleared when the account changes.
+type ProviderSlot =
+  | { status: "loading" }
+  | { status: "ok"; data: PremierData }
+  | { status: "error"; error: unknown };
+let slots: Partial<Record<Provider, ProviderSlot>> = {};
+// Errors already reported to analytics for this account, so a provider the
+// player has no account on is counted once, when it's first shown.
+let trackedErrors = new Set<Provider>();
+// Set while the Account input is being resolved to a Steam ID (vanity / FACEIT
+// lookups), and the message when that fails.
+let resolving = false;
 let previewError: string | null = null;
-let previewLoading = false;
+// Bumped each time a fresh account load starts; with the Steam ID it keys the
+// preview animator, so a new load plays the entrance but a provider switch
+// morphs the card in place.
+let loadGen = 0;
+// The account load whose card is on screen ('' when it's a prompt or message).
+let shownKey = "";
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastTrackedSteamId: string | null = null;
 // Last live channel we counted, so adopting a channel fires one adoption event
@@ -142,6 +163,137 @@ function getWidgetUrl(): string {
   const base =
     window.location.origin + window.location.pathname.replace(/\/$/, "");
   return `${base}/widget/?${params.toString()}`;
+}
+
+// OBS reads `layer-width` / `layer-height` / `layer-name` from a URL dropped
+// onto its canvas, sizes the new Browser Source from them, and strips them
+// from the saved URL. Pasting the URL into a source's settings ignores them.
+const OBS_LAYER_NAME = "CS2 Stats Overlay";
+// The overlay's real size for the current settings and data, or null until a
+// profile has loaded. Rendered off-screen rather than read from the preview,
+// because the preview scales the card, clamps long names and can squeeze it
+// into a narrow panel; this matches what the overlay page lays out.
+function measureOverlaySize(): { width: number; height: number } | null {
+  if (!currentConfig.steamId) return null;
+  const slot = slots[currentConfig.provider];
+  if (slot?.status !== "ok") return null;
+
+  let box = document.getElementById("obs-measure");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "obs-measure";
+    box.setAttribute("aria-hidden", "true");
+    box.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:max-content;visibility:hidden;pointer-events:none;contain:layout style;";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = renderWidget(currentConfig, slot.data);
+  const widget = box.querySelector<HTMLElement>(".widget");
+  const rect = widget?.getBoundingClientRect();
+  box.innerHTML = "";
+  if (!rect || rect.width === 0 || rect.height === 0) return null;
+  // Exact fit: rounded up only to whole pixels. Numbers reserve their widest
+  // width, so the card can't outgrow this on stream.
+  return { width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
+}
+
+function getObsDragUrl(size: { width: number; height: number }): string {
+  // Spaces as %20, not URLSearchParams' "+": OBS reads the name with Qt's
+  // QUrlQuery, which leaves "+" as a literal plus.
+  return (
+    `${getWidgetUrl()}&layer-name=${encodeURIComponent(OBS_LAYER_NAME)}` +
+    `&layer-width=${size.width}&layer-height=${size.height}`
+  );
+}
+
+// Keeps the drag-into-OBS handle's link and size readout in step with the
+// current settings and data. Disabled until a profile has loaded.
+function updateObsDragLink() {
+  const field = document.getElementById("obs-drag");
+  if (!field) return;
+  const size = measureOverlaySize();
+  field.classList.toggle("is-disabled", !size);
+  field.draggable = !!size;
+  setObsSizeReadout(field, size);
+  syncObsField();
+}
+
+// The "609 x 128" readout: each number is a NumberFlow that rolls to its new
+// value as settings change the overlay's size. A hidden plain-text copy gives
+// the readout's final width up front (NumberFlow eases its own width).
+function setObsSizeReadout(
+  field: HTMLElement,
+  size: { width: number; height: number } | null,
+) {
+  const sizeEl = field.querySelector<HTMLElement>(".obs-drag-size");
+  const measure = field.querySelector<HTMLElement>(".obs-size-measure");
+  if (!sizeEl || !measure) return;
+  sizeEl.hidden = !size;
+  measure.textContent = size ? `${size.width} x ${size.height}` : "";
+  if (!size) return;
+  const [w, h] = sizeEl.querySelectorAll<NumberFlow>("number-flow");
+  w.update(size.width);
+  h.update(size.height);
+}
+
+// Which view the OBS field shows (see .obs-field in customizer.css): the drag
+// view by default, the link while the copy button is hovered or focused, and
+// a "copied" confirmation for a beat after copying.
+let obsShowLink = false;
+let obsCopied = false;
+function syncObsField() {
+  const field = document.getElementById("obs-drag");
+  if (!field) return;
+  const mode = obsCopied ? "copied" : obsShowLink ? "link" : "drag";
+  field.dataset.mode = mode;
+  field.classList.toggle("copied", obsCopied);
+  // Size the right-hand slot to the incoming label so its width eases between
+  // "609 x 128", "COPY LINK" and "LINK COPIED".
+  const side = field.querySelector<HTMLElement>(".obs-side");
+  const label = side?.querySelector<HTMLElement>(
+    mode === "drag" ? ".obs-size-measure" : mode === "link" ? ".obs-copy-label" : ".obs-copied-label",
+  );
+  if (side && label) side.style.width = `${label.scrollWidth}px`;
+}
+
+// Gives each segmented toggle one sliding pill that follows its selected
+// segment. Watches the segments' classes (every toggle's own code just sets
+// .selected) and the track's size (it can start hidden, or reflow).
+function initSegThumbs() {
+  for (const track of document.querySelectorAll<HTMLElement>(".seg-track")) {
+    const thumb = document.createElement("span");
+    thumb.className = "seg-thumb no-anim";
+    thumb.setAttribute("aria-hidden", "true");
+    track.prepend(thumb);
+    let shown = false;
+    const place = () => {
+      const seg = track.querySelector<HTMLElement>(".seg.selected");
+      if (!seg || track.offsetWidth === 0) {
+        thumb.style.opacity = "0";
+        shown = false;
+        return;
+      }
+      // Jump into place the first time (or after being hidden) instead of
+      // sliding in from wherever it last was.
+      if (!shown) thumb.classList.add("no-anim");
+      thumb.style.opacity = "";
+      thumb.style.width = `${seg.offsetWidth}px`;
+      thumb.style.height = `${seg.offsetHeight}px`;
+      thumb.style.transform = `translate(${seg.offsetLeft}px, ${seg.offsetTop}px)`;
+      if (!shown) {
+        void thumb.offsetWidth;
+        thumb.classList.remove("no-anim");
+        shown = true;
+      }
+    };
+    new MutationObserver(place).observe(track, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    new ResizeObserver(place).observe(track);
+    place();
+  }
 }
 
 // Never render the widget larger than natural size in the preview; fitPreview
@@ -180,44 +332,64 @@ function promptCardHtml(text: string): string {
   return `<div class="preview-prompt">${text}</div>`;
 }
 
+// Animates preview changes: numbers roll, toggled features resize the card
+// smoothly, and a newly loaded player plays the overlay's entrance.
+const animatePreview = createPreviewAnimator();
+
 function renderPreview() {
   const body = document.getElementById("preview-widget");
   const banner = document.getElementById("preview-banner");
   const bannerText = document.getElementById("preview-banner-text");
   if (!body || !banner || !bannerText) return;
 
-  if (previewError) {
-    bannerText.textContent = previewError;
-    banner.hidden = false;
-    // Keep the last good widget behind the banner if we have one; otherwise the
-    // prompt card so the panel never looks broken.
-    body.innerHTML = previewData
-      ? renderWidget(currentConfig, previewData)
-      : promptCardHtml(PROMPT_TEXT);
-  } else {
-    banner.hidden = true;
-    if (previewLoading) {
-      body.innerHTML = renderMessage("Loading", "…");
-    } else if (!previewData) {
-      body.innerHTML = promptCardHtml(PROMPT_TEXT);
-    } else {
-      body.innerHTML = renderWidget(currentConfig, previewData);
-    }
-  }
+  const slot = currentConfig.steamId ? slots[currentConfig.provider] : undefined;
+  body.classList.remove("is-pending");
+  const error =
+    previewError ??
+    (slot?.status === "error"
+      ? slot.error instanceof Error
+        ? slot.error.message
+        : "Failed to load"
+      : null);
+  banner.hidden = !error;
+  if (error) bannerText.textContent = error;
 
+  const key = `${currentConfig.steamId}#${loadGen}`;
+  if (slot?.status === "ok" && !error) {
+    const html = renderWidget(currentConfig, slot.data);
+    animatePreview(body, html, key, fitPreview);
+    shownKey = key;
+    updateObsDragLink();
+    return;
+  }
+  if (slot?.status === "loading" || (resolving && !error)) {
+    // Switched to a provider whose data is still on its way: keep the card on
+    // screen (dimmed) and morph it once the data lands, rather than flashing
+    // a loading state. Only a first load shows "Loading".
+    if (slot && shownKey === key && body.querySelector(".widget:not(.is-message)")) {
+      body.classList.add("is-pending");
+      return;
+    }
+    body.innerHTML = renderMessage("Loading", "…");
+  } else {
+    body.innerHTML = promptCardHtml(PROMPT_TEXT);
+  }
+  shownKey = "";
   fitPreview();
+  updateObsDragLink();
 }
 
 function updateGeneratedUrl() {
-  const urlEl = document.getElementById("generated-url") as HTMLInputElement;
+  const urlEl = document.getElementById("generated-url")!;
   const url = currentConfig.steamId ? getWidgetUrl() : "";
-  urlEl.value = url;
+  urlEl.textContent = url;
 
   const zipBtn = document.getElementById("export-zip") as HTMLButtonElement | null;
   if (zipBtn) zipBtn.disabled = !url;
   // Dim the whole export bar until there's a real widget URL to hand off.
   const bar = document.getElementById("exportbar");
   if (bar) bar.classList.toggle("is-empty", !url);
+  updateObsDragLink();
 }
 
 // Turns whatever is in the Account box — a Steam64 ID, a Steam profile/vanity
@@ -235,9 +407,9 @@ async function resolveAndLoad(rawInput: string) {
 
   if (parsed.kind === "empty") {
     currentConfig.steamId = "";
-    previewData = null;
+    slots = {};
     previewError = null;
-    previewLoading = false;
+    resolving = false;
     renderPreview();
     updateGeneratedUrl();
     return;
@@ -245,9 +417,9 @@ async function resolveAndLoad(rawInput: string) {
 
   if (parsed.kind === "invalid") {
     currentConfig.steamId = "";
-    previewData = null;
+    slots = {};
     previewError = "Enter a Steam ID / profile link or a FACEIT link / username";
-    previewLoading = false;
+    resolving = false;
     renderPreview();
     updateGeneratedUrl();
     return;
@@ -258,7 +430,7 @@ async function resolveAndLoad(rawInput: string) {
   if (parsed.kind === "id") {
     steamId = parsed.steamId;
   } else {
-    previewLoading = true;
+    resolving = true;
     previewError = null;
     renderPreview();
     try {
@@ -272,8 +444,8 @@ async function resolveAndLoad(rawInput: string) {
         provider: currentConfig.provider,
       });
       previewError = e instanceof Error ? e.message : "Failed to resolve";
-      previewData = null;
-      previewLoading = false;
+      slots = {};
+      resolving = false;
       currentConfig.steamId = "";
       renderPreview();
       updateGeneratedUrl();
@@ -282,6 +454,7 @@ async function resolveAndLoad(rawInput: string) {
     if (token !== resolveToken) return; // superseded by newer input
   }
 
+  resolving = false;
   currentConfig.steamId = steamId;
   updateGeneratedUrl();
   await loadPreview(token);
@@ -314,49 +487,70 @@ async function resolveAccountToSteamId(parsed: AccountInput): Promise<string> {
   }
 }
 
+// Fetches the account's Premier and FACEIT data together. Whichever matches the
+// current toggle is shown as soon as it lands; the other waits in `slots` so a
+// switch is instant. A player with no account on one side just gets that
+// side's error banner when they switch to it.
 async function loadPreview(token = ++resolveToken) {
+  slots = {};
+  trackedErrors = new Set();
+  previewError = null;
   if (!currentConfig.steamId) {
-    previewData = null;
-    previewError = null;
-    previewLoading = false;
     renderPreview();
     return;
   }
 
-  previewLoading = true;
-  previewError = null;
+  loadGen++;
+  const steamId = currentConfig.steamId;
+  const fetchers: Record<Provider, () => Promise<PremierData>> = {
+    leetify: () => fetchPremierData(steamId),
+    // Fetch up to matchCount so toggling the stats block (which caps the strip
+    // at 5) never needs a re-fetch; the widget itself fetches the exact 5/10
+    // via faceitHistoryCount.
+    faceit: () => fetchFaceitData(steamId, currentConfig.matchCount),
+  };
+  const providers = Object.keys(fetchers) as Provider[];
+  for (const p of providers) slots[p] = { status: "loading" };
   renderPreview();
 
-  try {
-    const data =
-      currentConfig.provider === "faceit"
-        // Fetch up to matchCount so toggling the stats block (which caps the
-        // strip at 5) never needs a re-fetch; the widget itself fetches the
-        // exact 5/10 via faceitHistoryCount.
-        ? await fetchFaceitData(currentConfig.steamId, currentConfig.matchCount)
-        : await fetchPremierData(currentConfig.steamId);
-    if (token !== resolveToken) return; // superseded by newer input
-    previewData = data;
-    if (currentConfig.steamId !== lastTrackedSteamId) {
-      // Just a funnel count — no Steam ID sent (we only want *that* someone got
-      // this far, not *who*).
-      trackEvent("steam_id_entered");
-      lastTrackedSteamId = currentConfig.steamId;
-    }
-  } catch (e) {
-    if (token !== resolveToken) return; // superseded by newer input
-    trackEvent("preview_error", {
-      stage: "stats",
-      reason: classifyFetchError(e),
-      detail: errorDetail(e),
-      provider: currentConfig.provider,
-    });
-    previewError = e instanceof Error ? e.message : "Failed to load";
-    previewData = null;
-  }
-  previewLoading = false;
-  renderPreview();
-  updateGeneratedUrl();
+  await Promise.all(
+    providers.map(async (p) => {
+      let slot: ProviderSlot;
+      try {
+        slot = { status: "ok", data: await fetchers[p]() };
+      } catch (e) {
+        slot = { status: "error", error: e };
+      }
+      if (token !== resolveToken) return; // superseded by newer input
+      slots[p] = slot;
+      if (slot.status === "ok" && steamId !== lastTrackedSteamId) {
+        // Just a funnel count — no Steam ID sent (we only want *that* someone
+        // got this far, not *who*).
+        trackEvent("steam_id_entered");
+        lastTrackedSteamId = steamId;
+      }
+      if (p === currentConfig.provider) {
+        trackShownError();
+        renderPreview();
+      }
+    }),
+  );
+}
+
+// Reports the current provider's load failure to analytics, once per account
+// and provider, when it's actually shown (a background fetch for the other
+// provider failing isn't an error the visitor saw).
+function trackShownError() {
+  const p = currentConfig.provider;
+  const slot = slots[p];
+  if (slot?.status !== "error" || trackedErrors.has(p)) return;
+  trackedErrors.add(p);
+  trackEvent("preview_error", {
+    stage: "stats",
+    reason: classifyFetchError(slot.error),
+    detail: errorDetail(slot.error),
+    provider: p,
+  });
 }
 
 function debouncedLoadPreview(rawInput: string) {
@@ -366,7 +560,8 @@ function debouncedLoadPreview(rawInput: string) {
 
 // Switches the active data source. The Steam identity and its input stay put —
 // only the stat trio/pills, the provider-specific Design rows, and the preview's
-// data source change. Re-fetches the current Steam ID against the new provider.
+// data source change. Both providers' data is already loaded (or loading) for
+// the current Steam ID, so the preview morphs to the other one in place.
 // `source` is "auto" when a pasted FACEIT/Steam link flipped it.
 function setProvider(provider: Provider, source: "manual" | "auto" = "manual") {
   if (currentConfig.provider === provider) return;
@@ -379,8 +574,11 @@ function setProvider(provider: Provider, source: "manual" | "auto" = "manual") {
   syncProviderToggle();
   syncProviderRows();
 
-  if (currentConfig.steamId) loadPreview();
-  else renderPreview();
+  if (currentConfig.steamId && !slots[provider]) loadPreview();
+  else {
+    trackShownError();
+    renderPreview();
+  }
   updateGeneratedUrl();
   trackEvent("provider_selected", { provider, source });
 }
@@ -394,7 +592,8 @@ function syncProviderToggle() {
 }
 
 // Swaps the provider-specific Data toggles: FACEIT gets Flag (its dial is
-// always shown, so no Styled Rank); Premier gets Styled Rank (no Flag).
+// always shown, so no Avatar or Styled Rank); Premier gets Avatar and Styled
+// Rank (no Flag).
 function syncProviderRows() {
   const faceit = currentConfig.provider === "faceit";
   const set = (id: string, hidden: boolean) => {
@@ -402,6 +601,7 @@ function syncProviderRows() {
     if (el) el.hidden = hidden;
   };
   set("flag-row", !faceit);
+  set("avatar-row", faceit);
   set("badge-row", faceit);
   syncHistoryModeUi();
 }
@@ -469,6 +669,7 @@ function bindHistoryMode() {
 // so they're bound separately.
 const checkboxMap: Record<string, keyof WidgetConfig> = {
   "show-flag": "showFlag",
+  "show-avatar": "showAvatar",
   "show-name": "showName",
   "show-change": "showChange",
   "show-history": "showMatchHistory",
@@ -634,6 +835,7 @@ function resetSection(section: string) {
   const d = DEFAULT_CONFIG;
   if (section === "data") {
     currentConfig.showFlag = d.showFlag;
+    currentConfig.showAvatar = d.showAvatar;
     currentConfig.showName = d.showName;
     currentConfig.showBadge = d.showBadge;
     currentConfig.showWinLoss = d.showWinLoss;
@@ -775,7 +977,7 @@ function syncCornerRadius() {
 
 // Elements whose corners change with the radius preset.
 const RADIUS_MORPH_SELECTORS = [".widget"];
-const RADIUS_MORPH_MS = 280;
+const RADIUS_MORPH_MS = 700;
 
 // The radius an element actually renders with. The pill preset is 9999px, which
 // the browser clamps to half the box — animating to/from 9999 would snap, so we
@@ -937,28 +1139,56 @@ function bindControls() {
     if (link) trackEvent("social_click", { target: link.dataset.link ?? "unknown" });
   });
 
-  document.getElementById("copy-url")!.addEventListener("click", () => {
-    const urlEl = document.getElementById("generated-url") as HTMLInputElement;
-    // Ignore repeat clicks while the "Link Copied!" confirmation is showing so
-    // we don't capture that placeholder as the URL to restore.
-    if (urlEl.value && urlEl.dataset.copiedRestore === undefined) {
-      navigator.clipboard.writeText(urlEl.value);
-      trackEvent("widget_url_copied", configEventProps(currentConfig));
-      const box = document.getElementById("copy-url")!.closest(".url-box")!;
-      box.classList.add("copied");
-      // Swap the icon to a check mark and the URL text to a confirmation, then
-      // restore both after a short beat.
-      urlEl.dataset.copiedRestore = urlEl.value;
-      urlEl.value = "Link Copied!";
-      setTimeout(() => {
-        box.classList.remove("copied");
-        if (urlEl.dataset.copiedRestore !== undefined) {
-          urlEl.value = urlEl.dataset.copiedRestore;
-          delete urlEl.dataset.copiedRestore;
-        }
-      }, 1500);
-    }
+  const dragLink = document.getElementById("obs-drag")!;
+  let copiedTimer = 0;
+  const copyBtn = document.getElementById("copy-url")!;
+  copyBtn.addEventListener("click", () => {
+    if (!currentConfig.steamId) return;
+    navigator.clipboard.writeText(getWidgetUrl());
+    trackEvent("widget_url_copied", configEventProps(currentConfig));
+    // Swap the icon to a check mark and "COPY LINK" to "LINK COPIED" for a
+    // short beat.
+    obsCopied = true;
+    syncObsField();
+    clearTimeout(copiedTimer);
+    copiedTimer = window.setTimeout(() => {
+      obsCopied = false;
+      syncObsField();
+    }, 1500);
   });
+  const setShowLink = (on: boolean) => {
+    obsShowLink = on;
+    syncObsField();
+  };
+  copyBtn.addEventListener("pointerenter", () => setShowLink(true));
+  copyBtn.addEventListener("pointerleave", () => setShowLink(false));
+  copyBtn.addEventListener("focus", () => setShowLink(copyBtn.matches(":focus-visible")));
+  copyBtn.addEventListener("blur", () => setShowLink(false));
+
+  dragLink.addEventListener("dragstart", (e) => {
+    // Measure again at the moment of the drag, so a font that finished loading
+    // since the last update is counted.
+    const size = measureOverlaySize();
+    if (!size || !e.dataTransfer) {
+      e.preventDefault();
+      return;
+    }
+    const url = getObsDragUrl(size);
+    e.dataTransfer.effectAllowed = "copyLink";
+    e.dataTransfer.setData("text/uri-list", url);
+    e.dataTransfer.setData("text/plain", url);
+    trackEvent("widget_url_dragged", configEventProps(currentConfig));
+  });
+  // A click on the field (not the copy button) does nothing; nudge toward
+  // dragging instead.
+  dragLink.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).closest("#copy-url")) return;
+    dragLink.classList.remove("nudge");
+    void dragLink.offsetWidth;
+    dragLink.classList.add("nudge");
+  });
+  // Web fonts change the card's size once they arrive.
+  document.fonts?.addEventListener?.("loadingdone", updateObsDragLink);
 
   const zipBtn = document.getElementById("export-zip")!;
   zipBtn.addEventListener("click", () => {
@@ -1022,7 +1252,7 @@ function mountConsentUi() {
             <li>That a Steam ID was entered — <strong>not the ID itself</strong></li>
             <li>The live channel you enter (a public Twitch, YouTube, or Kick handle) and which platform it is, if you use a live session</li>
             <li>Which widget settings you build (fonts, stats, colors, and so on)</li>
-            <li>When you copy the widget URL or export the ZIP</li>
+            <li>When you copy the widget URL, drag it into OBS, or export the ZIP</li>
             <li>Clicks on the GitHub, Ko-fi, and Twitch links</li>
             <li>Errors, so broken states can be found and fixed</li>
           </ul>
@@ -1266,6 +1496,7 @@ function init() {
             </div>
             <div class="check-grid">
               <label class="check" id="flag-row" hidden><input type="checkbox" id="show-flag"><span class="check-text">Flag</span></label>
+              <label class="check" id="avatar-row"><input type="checkbox" id="show-avatar"><span class="check-text">Avatar</span></label>
               <label class="check"><input type="checkbox" id="show-name"><span class="check-text">Name</span></label>
               <label class="check" id="badge-row"><input type="checkbox" id="show-badge"><span class="check-text">Styled Rank</span></label>
               <label class="check"><input type="checkbox" id="show-wl"><span class="check-text">W/L</span></label>
@@ -1362,16 +1593,18 @@ function init() {
 
       <div class="stage">
         <div class="exportbar is-empty" id="exportbar">
-          <div class="export-url">
-            <label class="field-label" for="generated-url">OBS Browser Source URL</label>
-            <div class="url-box">
-              <input type="text" id="generated-url" class="url-input" readonly placeholder="Enter a Steam ID to generate the URL">
-              <button type="button" id="copy-url" class="icon-btn" aria-label="Copy URL"><span class="icon-copy">${ICON_COPY}</span><span class="icon-check">${ICON_CHECK}</span></button>
+          <div class="export-obs">
+            <span class="field-label">OBS Studio (Drag and drop onto OBS scene or copy browser source link)</span>
+            <div id="obs-drag" class="obs-field is-disabled" data-mode="drag" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
+              <span class="obs-grip">${ICON_GRIP}</span>
+              <span class="obs-main"><span class="obs-drag-label">DRAG INTO OBS</span><span class="obs-url" id="generated-url"></span></span>
+              <span class="obs-side"><span class="obs-drag-size" hidden><number-flow class="obs-size-num"></number-flow> x <number-flow class="obs-size-num"></number-flow></span><span class="obs-size-measure" aria-hidden="true"></span><span class="obs-copy-label">COPY LINK</span><span class="obs-copied-label">LINK COPIED</span></span>
+              <button type="button" id="copy-url" class="icon-btn" aria-label="Copy browser source link"><span class="icon-copy">${ICON_COPY}</span><span class="icon-check">${ICON_CHECK}</span></button>
             </div>
           </div>
           <div class="export-zip">
-            <label class="field-label">Custom Widget</label>
-            <button type="button" id="export-zip" class="zip-btn" disabled><span class="se-logo">${ICON_STREAMELEMENTS}</span><span class="zip-label">DOWNLOAD ZIP</span></button>
+            <span class="field-label">StreamElements</span>
+            <button type="button" id="export-zip" class="zip-btn" disabled><span class="zip-label">DOWNLOAD ZIP</span></button>
           </div>
         </div>
 
@@ -1385,6 +1618,7 @@ function init() {
 
   bindControls();
   syncControlsFromConfig();
+  initSegThumbs();
   bindScrollFades();
   mountConsentUi();
   mountTos();

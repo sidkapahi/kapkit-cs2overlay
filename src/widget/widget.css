@@ -62,10 +62,32 @@ body {
   align-items: center;
   gap: 12px;
 }
+/* A number's fixed-size slot (numSlot in render.ts): invisible ghosts of the
+   widest values share the real number's grid cell, so the slot is as wide as
+   the widest of them and the number is left-aligned inside it. */
+.num-slot {
+  display: inline-grid;
+  align-items: center;
+  justify-items: start;
+}
+.num-slot > * { grid-area: 1 / 1; }
+/* NumberFlow's rolling digits can measure a fraction of a pixel wider than the
+   settled number mid-animation. A 1px allowance (negative margin on the number,
+   matching padding on the slot) absorbs that, so the slot doesn't twitch. */
+.num-slot { padding-inline-end: 1px; }
+.num-slot > :not(.slot-ghost) { margin-inline-end: -1px; }
+.slot-ghost {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* Plain (no-badge) rating — rank-coloured number. Also the FACEIT ELO. Follows
    the weight picked in Design (Bold by default). */
 .rating-plain {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   font-size: 30px;
   font-weight: var(--w-weight, 700);
   line-height: 1;
@@ -98,6 +120,10 @@ body {
 }
 
 .rating-badge-text {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   position: absolute;
   left: 26%;
   right: 8%;
@@ -129,6 +155,10 @@ body {
 /* Rank loss/gain — a directional arrow (inherits the tint via currentColor)
    followed by the absolute change. Sized a step below the rating beside it. */
 .rating-diff {
+  /* Tabular figures: every digit is equally wide, so the number's width only
+     changes with its digit count. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
   display: inline-flex;
   align-items: center;
   gap: 0.1em; /* 4px at the design's 40px number (Figma 70:1419 / 70:1413) */
@@ -144,6 +174,8 @@ body {
   height: 1.2em;
   flex-shrink: 0;
 }
+/* A loss turns the up-right arrow 90° to point down-right (see render.ts). */
+.rating-diff.negative .diff-arrow { transform: rotate(90deg); }
 /* Same green / red as the W/L record (.wl-win / .wl-loss). */
 .rating-diff.positive { color: #23a827; }
 .rating-diff.negative { color: #ff3636; }
@@ -180,6 +212,9 @@ body {
   min-width: 22px;
   text-align: right;
 }
+/* Sized for two digits (numSlot in render.ts), so the record doesn't widen the
+   widget going from 9 to 10. Left-aligned so a single digit still sits right
+   next to its letter. */
 .wl-count { justify-self: end; }
 
 .wl-win  { color: #23a827; }
@@ -210,6 +245,10 @@ body {
   font-feature-settings: 'tnum';
 }
 
+/* Each value sits in a slot sized for its widest normal reading (numSlot in
+   render.ts), centred over its label. */
+.stat-val.num-slot { justify-items: center; }
+
 .stat-lbl {
   font-size: 14px;
   font-weight: 700;
@@ -229,6 +268,8 @@ body {
 }
 
 .hist-letters {
+  /* Anchors the outgoing match animateHistory slides off the right end. */
+  position: relative;
   display: flex;
   gap: 14px;
   font-size: 16px;
@@ -241,6 +282,12 @@ body {
 .hist-letters .w { color: #23a827; }
 .hist-letters .l { color: #ff3636; }
 .hist-letters .t { color: #ffe136; }
+/* W, L and T letters take the same slot (about a W's width), so the strip keeps
+   its length whatever the results are. */
+.hist-letters:not(.hist-elo) > span {
+  min-width: 1em;
+  text-align: center;
+}
 
 /* FACEIT ELO mode (Figma 157:3546): each match is an outlined chip carrying its
    ELO change, tinted by the outcome. Every chip is the same fixed 52x32 box
@@ -284,6 +331,7 @@ body {
    left slot where Premier shows the avatar. The level number and colour are
    baked into the SVG art. */
 .faceit-rank {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -296,15 +344,51 @@ body {
   height: 80px;
 }
 
+/* Level-change animation layers (animateRank.ts): copies of the old and new
+   dial stacked over the real one while it's hidden. Out of flow, so they never
+   move anything. */
+.rank-fx {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  pointer-events: none;
+}
+
+.rank-fx-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.rank-fx-layer svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* The level number rolls through a round window in the dial's centre. */
+.rank-fx-num { clip-path: circle(30% at 50% 50%); }
+
+.rank-fx-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid;
+  border-radius: 50%;
+}
+
 /* Challenger leaderboard position (#528) — the rank number in a pill filled
    with the widget's own background, overlapping the bottom of the emblem so it
    reads as cut out of it (Figma 198:332: 20px extra-bold, 2% tracking, #fb0a33
    text, 6/8 padding, -17px overlap). The fill and the #1/#2/#3 medal text colour are set
    inline by render.ts. Only rendered for Challenger. */
+/* Overlaps the bottom of the dial. Positioned out of flow so reaching
+   Challenger (or dropping out of it) doesn't change the widget's height. */
 .faceit-pos {
-  position: relative;
+  position: absolute;
   z-index: 1;
-  margin-top: -17px;
+  top: calc(100% - 17px);
+  left: 50%;
+  transform: translateX(-50%);
   padding: 6px 8px;
   border-radius: 999px;
   background: #141414;
@@ -329,7 +413,9 @@ body {
 
 .flag {
   height: 22px;
-  width: auto;
+  /* Fixed 4:3 width rather than auto, so the card has its final width before
+     the flag image loads (and the drag-into-OBS size measures it right). */
+  width: calc(22px * 4 / 3);
   border-radius: 4px;
   flex-shrink: 0;
   /* A hairline keeps a white/light flag legible on the dark widget. */
@@ -347,3 +433,57 @@ body {
 
 /* ---- Loading ------------------------------------------------------------ */
 .widget.loading { opacity: 0.6; }
+
+/* ---- Number animations -------------------------------------------------- */
+/* NumberFlow (animateNumbers.ts) pads its digits top and bottom so rolling
+   digits fade out at the edges: half the mask height on the digit column and
+   again on its inner wrapper, a full mask height per side. Pull that back with
+   a matching negative margin (same rounding expression NumberFlow uses) so an
+   animated number takes exactly the space its plain text did — no layout
+   shift between the first, static render and later, animated ones. */
+number-flow {
+  --number-flow-mask-height: 0.25em;
+  margin-block: calc(-2 * round(nearest, calc(var(--number-flow-mask-height) / 2), 1px));
+}
+
+/* ---- First-load entrance ------------------------------------------------ */
+/* The live widget adds .intro to its container for the first render only (see
+   playIntro in animateNumbers.ts): the card fades in, then the avatar / rank
+   dial pops, the name, labels and W/L letters slide in, and the history strip
+   ticks in left to right, while the numbers roll up from zero. Every element
+   ends at its normal style, so dropping the class afterwards changes nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro .widget { animation: w-in-card 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .avatar,
+  .intro .faceit-rank svg { animation: w-in-pop 1500ms cubic-bezier(0.34, 1.56, 0.64, 1) 250ms both; }
+  .intro .faceit-pos { animation: w-in-pos 1250ms cubic-bezier(0.34, 1.56, 0.64, 1) 875ms both; }
+  .intro .name { animation: w-in-left 1250ms cubic-bezier(0.2, 0.8, 0.2, 1) 375ms both; }
+  .intro .badge-svg { animation: w-in-wipe 1375ms cubic-bezier(0.65, 0, 0.35, 1) 375ms both; }
+  .intro .stat-lbl { animation: w-in-up 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) 625ms both; }
+  .intro .stat:nth-child(2) .stat-lbl { animation-delay: 800ms; }
+  .intro .stat:nth-child(3) .stat-lbl { animation-delay: 975ms; }
+  .intro .stat:nth-child(4) .stat-lbl { animation-delay: 1150ms; }
+  .intro .stat:nth-child(5) .stat-lbl { animation-delay: 1325ms; }
+  .intro .stat:nth-child(6) .stat-lbl { animation-delay: 1500ms; }
+  .intro .wl-letter { animation: w-in-left 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) 750ms both; }
+  .intro .wl-loss .wl-letter { animation-delay: 950ms; }
+  .intro .hist-letters > * { animation: w-in-up 875ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .intro .hist-letters > :nth-child(1) { animation-delay: 875ms; }
+  .intro .hist-letters > :nth-child(2) { animation-delay: 1000ms; }
+  .intro .hist-letters > :nth-child(3) { animation-delay: 1125ms; }
+  .intro .hist-letters > :nth-child(4) { animation-delay: 1250ms; }
+  .intro .hist-letters > :nth-child(5) { animation-delay: 1375ms; }
+  .intro .hist-letters > :nth-child(6) { animation-delay: 1500ms; }
+  .intro .hist-letters > :nth-child(7) { animation-delay: 1625ms; }
+  .intro .hist-letters > :nth-child(8) { animation-delay: 1750ms; }
+  .intro .hist-letters > :nth-child(9) { animation-delay: 1875ms; }
+  .intro .hist-letters > :nth-child(10) { animation-delay: 2000ms; }
+  .intro .hist-brand { animation: w-in-fade 1250ms ease-out 1500ms both; }
+}
+@keyframes w-in-card { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes w-in-pop  { from { opacity: 0; transform: scale(0.5); } }
+@keyframes w-in-pos  { from { opacity: 0; transform: translateX(-50%) scale(0.5); } }
+@keyframes w-in-left { from { opacity: 0; transform: translateX(-10px); } }
+@keyframes w-in-up   { from { opacity: 0; transform: translateY(8px); } }
+@keyframes w-in-fade { from { opacity: 0; } }
+@keyframes w-in-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
