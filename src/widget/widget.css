@@ -192,6 +192,9 @@ body {
   column-gap: 6px;
   row-gap: 12px;
   flex-shrink: 0;
+  /* Pinned to the card's right edge. When the match history row is wider than
+     the name/rating/stats row, the record would otherwise sit right after them. */
+  margin-inline-start: auto;
 }
 
 /* Each row hands its letter + count straight to the .wl grid. Typeface and
