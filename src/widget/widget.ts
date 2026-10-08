@@ -3,7 +3,8 @@ import { classifyFetchError, errorDetail, fetchPremierData, type PremierData } f
 import { fetchFaceitData } from '../shared/faceit';
 import { faceitHistoryCount, paramsToConfig } from '../shared/config';
 import { loadFont } from '../shared/fonts';
-import { renderMessage, renderWidget } from '../shared/render';
+import { renderMessage, renderSkeleton, renderWidget } from '../shared/render';
+import { loadSkeletonHint, saveSkeletonHint } from '../shared/skeletonHint';
 import {
   advanceSession,
   loadSession,
@@ -14,6 +15,7 @@ import {
 import { fetchLive, liveCheckAvailable } from '../shared/live';
 import { createNumberAnimator, playIntro } from './animateNumbers';
 import { watchForNewBuild } from './autoReload';
+import { morphCardFrom } from './morphCard';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -30,6 +32,14 @@ const LIVE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// An element's box on the page ignoring any transform on it (centred origin).
+function layoutRect(el: HTMLElement): DOMRect {
+  const r = el.getBoundingClientRect();
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  return new DOMRect(r.left + (r.width - w) / 2, r.top + (r.height - h) / 2, w, h);
+}
+
 async function init() {
   const container = document.getElementById('app')!;
   const params = new URLSearchParams(window.location.search);
@@ -43,12 +53,10 @@ async function init() {
     return;
   }
 
-  container.innerHTML = `<div class="widget rank-gray no-badge no-avatar loading">
-    <div class="widget-main"><div class="identity"><div class="identity-text">
-      <div class="name">Loading…</div>
-      <div class="rating-line"><span class="rating-plain">—</span></div>
-    </div></div></div>
-  </div>`;
+  // Until the first stats arrive, a shimmering skeleton of the card for these
+  // settings. It's sized from this player's last load where there was one, so
+  // a refresh or a new-deploy reload shows a skeleton the card's exact size.
+  container.innerHTML = renderSkeleton(config, loadSkeletonHint(config.steamId, config.provider));
 
   // Session-scoped W/L is active only when a live channel is set *and* that
   // platform's proxy is configured; otherwise the pills keep their default
@@ -132,8 +140,18 @@ async function init() {
     // The first real render (lastHtml still empty) also plays the entrance.
     const first = !lastHtml;
     lastHtml = html;
+    const skeleton = first ? container.querySelector<HTMLElement>('.is-skeleton') : null;
+    // Its layout box, without the scale its own entrance may still be applying.
+    const skeletonRect = skeleton ? layoutRect(skeleton) : undefined;
     container.innerHTML = html;
-    if (first) playIntro(container);
+    if (first) {
+      // Taking over from the skeleton: the card is already up, so it morphs to
+      // its real size and only its contents play the entrance.
+      container.classList.toggle('from-skeleton', !!skeleton);
+      playIntro(container);
+      const widget = container.querySelector<HTMLElement>('.widget');
+      if (widget && skeletonRect) morphCardFrom(widget, skeletonRect);
+    }
     animateNumbers(container);
   }
 
@@ -153,6 +171,7 @@ async function init() {
       try {
         lastData = await fetchStats();
         statsHealthy = true;
+        saveSkeletonHint(config.steamId, config.provider, lastData);
         render();
         return;
       } catch (e) {

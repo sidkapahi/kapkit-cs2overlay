@@ -101,8 +101,9 @@ function numSlot(real: string, ghosts: string[], cls = 'num-slot'): string {
 }
 
 // Builds the full widget markup for a config + data pair. Shared by the live
-// widget and the customizer preview so both stay pixel-identical.
-export function renderWidget(config: WidgetConfig, data: PremierData): string {
+// widget and the customizer preview so both stay pixel-identical. `skeleton`
+// renders the same layout as a loading placeholder (see renderSkeleton).
+export function renderWidget(config: WidgetConfig, data: PremierData, skeleton = false): string {
   const isFaceit = config.provider === 'faceit';
   // Challenger = a level-10 player who holds a leaderboard position (#528).
   const isChallenger = isFaceit && data.leaderboardPosition != null;
@@ -127,7 +128,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     ratingHtml = `<span class="rating-plain faceit-elo" style="color: ${eloColor}"${ratingAttrs}>${ratingText}</span>`;
     ratingGhosts = ELO_GHOSTS.map((g) => `<span class="rating-plain faceit-elo">${g}</span>`);
   } else if (config.showBadge) {
-    ratingHtml = `<div class="rating-badge">${badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
+    ratingHtml = `<div class="rating-badge">${skeleton ? '' : badgeSvg(tier)}<span class="rating-badge-text"${ratingAttrs}>${ratingText}</span></div>`;
     ratingGhosts = ['<div class="rating-badge"></div>'];
   } else {
     ratingHtml = `<span class="rating-plain"${ratingAttrs}>${ratingText}</span>`;
@@ -138,7 +139,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   // ELO swing (FACEIT), shown with a directional arrow and the absolute value
   // (e.g. ↘ 53 / ↗ 280). Hidden when disabled or zero.
   let diffHtml = '';
-  if (config.showChange && data.ratingDiff !== 0) {
+  if (config.showChange && data.ratingDiff !== 0 && !skeleton) {
     const up = data.ratingDiff > 0;
     const cls = up ? 'positive' : 'negative';
     const abs = Math.abs(data.ratingDiff);
@@ -169,7 +170,9 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // number. The position pill is filled with the widget's background colour
     // at full opacity, so it still masks the emblem when the widget is
     // translucent.
-    const dial = faceitDialSvg(data.skillLevel, isChallenger, data.leaderboardPosition);
+    const dial = skeleton
+      ? '<span class="dial-bone"></span>'
+      : faceitDialSvg(data.skillLevel, isChallenger, data.leaderboardPosition);
     const posHtml =
       isChallenger && data.leaderboardPosition != null
         ? `<span class="faceit-pos" style="background: ${bgRgba(config.bgColor, 100)}; color: ${challengerPosColor(data.leaderboardPosition)}">#<span${numAttrs('pos', data.leaderboardPosition)}>${data.leaderboardPosition}</span></span>`
@@ -181,7 +184,11 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     avatarHtml = `<div class="faceit-rank" data-rank="${rank}" data-rank-color="${rankColor}">${dial}${posHtml}</div>`;
   } else {
     const avatarSrc = data.avatarUrl ? esc(data.avatarUrl) : defaultAvatarSrc;
-    avatarHtml = config.showAvatar ? `<img class="avatar" src="${avatarSrc}" alt="">` : '';
+    avatarHtml = !config.showAvatar
+      ? ''
+      : skeleton
+        ? '<div class="avatar"></div>'
+        : `<img class="avatar" src="${avatarSrc}" alt="">`;
   }
 
   // Name, with a country flag before it in FACEIT mode — gated by the Flag
@@ -191,9 +198,14 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   if (config.showName) {
     const flag =
       isFaceit && config.showFlag && flagUrl(data.country)
-        ? `<img class="flag" src="${flagUrl(data.country)}" alt="">`
+        ? skeleton
+          ? '<span class="flag"></span>'
+          : `<img class="flag" src="${flagUrl(data.country)}" alt="">`
         : '';
-    nameHtml = `<div class="name">${flag}${esc(data.name)}</div>`;
+    // The skeleton puts the name in its own span so its bar hugs the text, not
+    // the flag beside it.
+    const name = skeleton ? `<span class="name-text">${esc(data.name)}</span>` : esc(data.name);
+    nameHtml = `<div class="name">${flag}${name}</div>`;
   }
 
   // W/L record — total wins and losses across the returned recent matches.
@@ -280,6 +292,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
     // has-avatar controls left-slot spacing; in FACEIT the slot is always the dial.
     (isFaceit || config.showAvatar) ? 'has-avatar' : 'no-avatar',
     isChallenger ? 'is-challenger' : '',
+    skeleton ? 'is-skeleton' : '',
     // 100 is the fully rounded pill preset.
     config.cornerRadius === 100 ? 'radius-full' : '',
   ]
@@ -300,7 +313,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
   }px;`;
 
   return `
-    <div class="widget ${modifiers}" style="${rootStyle}">
+    <div class="widget ${modifiers}" style="${rootStyle}"${skeleton ? ' aria-busy="true"' : ''}>
       <div class="widget-main">
         <div class="identity">
           ${avatarHtml}
@@ -317,6 +330,45 @@ export function renderWidget(config: WidgetConfig, data: PremierData): string {
       </div>
       ${historyHtml}
     </div>`;
+}
+
+// What the skeleton needs to know about a player to match their card's shape:
+// the name sets the card's width, the country whether a flag sits before it,
+// and the match count how long the history strip is. The live widget remembers
+// these from its last load (see skeletonHint.ts), so a reload — a refreshed
+// source, or a new deploy — shows a skeleton the exact size of the card.
+export interface SkeletonHint {
+  name: string;
+  country?: string;
+  games: number;
+}
+
+// Stand-in name for a player we've never loaded: about an average gamertag's
+// width, so the card changes size as little as possible when the real one lands.
+const SKELETON_NAME = 'xxxxxxxxxxxx';
+
+// Loading placeholder: the real card for the current settings, with every
+// piece of data replaced by a shimmering bar (styled by .is-skeleton in
+// widget.css). Same markup, same sizes, so the hand-off to the real card
+// doesn't move anything that doesn't have to.
+export function renderSkeleton(config: WidgetConfig, hint?: SkeletonHint | null): string {
+  const games = Math.max(0, Math.min(config.matchCount, hint?.games ?? config.matchCount));
+  const data: PremierData = {
+    name: hint?.name || SKELETON_NAME,
+    avatarUrl: '',
+    rating: 0,
+    ratingDiff: 0,
+    winRate: 0,
+    wins: 0,
+    losses: 0,
+    recentGames: Array.from({ length: games }, () => ({ outcome: 'win', kills: 0, deaths: 1 }) as PremierData['recentGames'][number]),
+    aimRating: 0,
+    // With no hint, assume a flag: most FACEIT players have a country set.
+    country: hint ? hint.country : 'us',
+    adr: 0,
+    hsPct: 0,
+  };
+  return renderWidget(config, data, true);
 }
 
 // Simple single-line state (loading / error / prompt) styled like the widget.
