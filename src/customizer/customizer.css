@@ -1615,3 +1615,45 @@ select.field-input option {
   color: var(--line);
 }
 
+
+/* ---- Ad units (index.html .ad-slot) -------------------------------------- */
+/* Narrow screens: one unit, centred below the page. */
+.ad-slot {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--app-pad) var(--app-pad);
+}
+
+.ad-slot iframe {
+  display: block;
+  width: 300px;
+  height: 250px;
+  border: 0;
+}
+
+/* Only one unit shows below the page; extra units are gutter-only. */
+.ad-slot ~ .ad-slot {
+  display: none;
+}
+
+/* Wide enough that a 300px unit fits in the gutter beside the centred shell
+   with room to spare: float each unit, vertically centred, in the middle of
+   its gutter. */
+@media (min-width: 1900px) {
+  .ad-slot,
+  .ad-slot ~ .ad-slot {
+    display: block;
+    position: fixed;
+    top: 50%;
+    padding: 0;
+    transform: translate(-50%, -50%);
+  }
+
+  .ad-slot--left {
+    left: calc((100% - var(--shell-max)) / 4);
+  }
+
+  .ad-slot--right {
+    left: calc(100% - (100% - var(--shell-max)) / 4);
+  }
+}
