@@ -334,6 +334,8 @@ GET /?twitch=ninja                 (twitch-live-proxy.js)
 GET /?youtube=@MrBeast             (youtube-live-proxy.js — @handle, UC… id, or name)
 GET /?kick=xqc                     (kick-live-proxy.js)
 → 200 { "live": true }   // or { "live": false } when offline
+// Twitch and Kick also send the stream's category while live:
+→ 200 { "live": true, "category": "Counter-Strike" }
 ```
 
 Invalid channels return `400`; when a platform's credentials aren't configured
