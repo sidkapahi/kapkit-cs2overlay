@@ -1614,3 +1614,42 @@ select.field-input option {
   font-size: 11.5px;
   color: var(--line);
 }
+
+/* ---- AdSense units (src/customizer/ads.ts) ------------------------------- */
+/* Narrow screens: one responsive unit below the page. */
+.ad-slot--bottom {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--app-pad) var(--app-pad);
+}
+
+.ad-slot--left,
+.ad-slot--right {
+  display: none;
+}
+
+/* Wide enough that a 300px unit fits in the gutter beside the centred shell:
+   float one, vertically centred, in the middle of each gutter. Keep the
+   breakpoint in sync with GUTTER_QUERY in ads.ts. */
+@media (min-width: 1900px) {
+  .ad-slot--bottom {
+    display: none;
+  }
+
+  .ad-slot--left,
+  .ad-slot--right {
+    display: block;
+    position: fixed;
+    top: 50%;
+    width: 300px;
+    transform: translate(-50%, -50%);
+  }
+
+  .ad-slot--left {
+    left: calc((100% - var(--shell-max)) / 4);
+  }
+
+  .ad-slot--right {
+    left: calc(100% - (100% - var(--shell-max)) / 4);
+  }
+}

@@ -51,6 +51,7 @@ import {
 } from "../shared/types";
 import NumberFlow from "number-flow";
 import { createPreviewAnimator } from "./previewMotion";
+import { initAds } from "./ads";
 import "../widget/widget.css";
 import "./customizer.css";
 
@@ -1639,6 +1640,7 @@ function init() {
   bindControls();
   syncControlsFromConfig();
   initSegThumbs();
+  initAds();
   bindScrollFades();
   mountConsentUi();
   mountTos();
