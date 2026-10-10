@@ -74,6 +74,9 @@ async function init() {
   // pollers and reconciled by render().
   let lastData: PremierData | null = null;
   let lastLive: boolean | null = null;
+  // The stream's category from the latest live check ('' if unknown), sent on
+  // the live analytics events so PostHog's Live Now tile can keep to CS2.
+  let lastCategory = '';
   // When the last stats refresh was *kicked off* (ms epoch). Used to throttle the
   // wake-driven catch-up refreshes below so they don't stack on the interval or
   // on each other while still recovering promptly after the timer was frozen.
@@ -102,7 +105,11 @@ async function init() {
       // A false→true flip is a fresh stream session starting; count it once.
       // (An OBS source refresh reloads the persisted live=true state, so it
       // won't re-fire — we count real go-live transitions, not refreshes.)
-      const liveProps = { platform: config.livePlatform, channel: config.liveChannel };
+      const liveProps = {
+        platform: config.livePlatform,
+        channel: config.liveChannel,
+        category: lastCategory,
+      };
       if (!wasLive && sessionState.live) {
         trackOverlayEvent('live_session_started', liveProps);
       }
@@ -183,10 +190,13 @@ async function init() {
   }
 
   async function updateLive() {
-    const live = await fetchLive(config.livePlatform, config.liveChannel);
+    const status = await fetchLive(config.livePlatform, config.liveChannel);
     // null means "unknown" (transient) — leave lastLive as-is so a blip can't be
     // misread as the stream ending.
-    if (live !== null) lastLive = live;
+    if (status !== null) {
+      lastLive = status.live;
+      lastCategory = status.category;
+    }
     render();
   }
 
