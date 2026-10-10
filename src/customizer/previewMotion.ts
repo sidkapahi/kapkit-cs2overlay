@@ -133,16 +133,21 @@ export function createPreviewAnimator() {
     lastWidget = widget;
     if (!widget || !isWidget) return;
 
+    const scale = widget.getBoundingClientRect().width / widget.offsetWidth || 1;
+
     if (newPlayer || !oldWidget || !oldRect) {
+      // Taking over from the loading skeleton, the card is already up: it
+      // morphs to its real size and only its contents play the entrance.
+      const fromSkeleton = !!oldWidget?.classList.contains('is-skeleton');
+      body.classList.toggle('from-skeleton', fromSkeleton);
       animateNumbers = createNumberAnimator();
       playIntro(body);
       animateNumbers(body);
+      if (fromSkeleton && oldRect && !reducedMotion()) morphPlate(body, widget, oldRect, scale);
       return;
     }
     animateNumbers(body);
     if (reducedMotion()) return;
-
-    const scale = widget.getBoundingClientRect().width / widget.offsetWidth || 1;
 
     // Parts that stayed slide from their old spot; new ones fade in, and a name
     // that changed (a provider switch: Steam name vs FACEIT nickname)
@@ -192,9 +197,13 @@ export function createPreviewAnimator() {
       el?.animate([{ color: oldColor }, { color: newColor }], { duration: 1500, easing: 'ease-in-out' });
     }
 
-    // Morph the card's background from its old size to its new one: a plate
-    // with the card's colour and corners animates between the two boxes while
-    // the card's own background is hidden.
+    morphPlate(body, widget, oldRect, scale);
+  };
+
+  // Morphs the card's background from its old size to its new one: a plate
+  // with the card's colour and corners animates between the two boxes while
+  // the card's own background is hidden.
+  function morphPlate(body: HTMLElement, widget: HTMLElement, oldRect: DOMRect, scale: number) {
     const newRect = widget.getBoundingClientRect();
     if (Math.abs(newRect.width - oldRect.width) < 0.5 && Math.abs(newRect.height - oldRect.height) < 0.5) return;
     const cs = getComputedStyle(widget);
@@ -232,5 +241,5 @@ export function createPreviewAnimator() {
     };
     endResize = finish;
     anim.finished.then(finish, () => {});
-  };
+  }
 }

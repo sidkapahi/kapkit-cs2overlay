@@ -434,8 +434,76 @@ body {
   font-feature-settings: 'tnum';
 }
 
-/* ---- Loading ------------------------------------------------------------ */
-.widget.loading { opacity: 0.6; }
+/* ---- Loading skeleton --------------------------------------------------- */
+/* renderSkeleton (render.ts) draws the real card for the current settings with
+   its data swapped for placeholder text. Here every piece of data becomes a
+   rounded bar the size of what it stands in for, with a highlight sweeping
+   across it, and all text goes transparent (inline colours included). */
+.widget.is-skeleton {
+  --bone: rgba(240, 240, 240, 0.08);
+  --bone-hi: rgba(240, 240, 240, 0.2);
+  --bone-fill: var(--bone) linear-gradient(100deg, transparent 35%, var(--bone-hi) 50%, transparent 65%) no-repeat;
+}
+.is-skeleton,
+.is-skeleton * {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+.is-skeleton :where(
+  .avatar, .dial-bone, .flag, .name-text, .rating-badge,
+  .rating-line > .num-slot, .stat-val, .stat-lbl, .wl-letter, .wl-count,
+  .hist-letters > span
+) {
+  background: var(--bone-fill);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  border-radius: 6px;
+}
+.is-skeleton .avatar,
+.is-skeleton .dial-bone { border-radius: 50%; }
+.is-skeleton .dial-bone {
+  display: block;
+  width: 80px;
+  height: 80px;
+}
+.is-skeleton .flag { box-shadow: none; }
+.is-skeleton .name-text {
+  display: inline-block;
+  line-height: 1;
+}
+/* The badge keeps its parallelogram (206:74 art, 20px lean). */
+.is-skeleton .rating-badge {
+  border-radius: 0;
+  clip-path: polygon(9.7% 0, 100% 0, 90.3% 100%, 0 100%);
+}
+.is-skeleton .hist-letters .hist-chip {
+  background: var(--bone-fill);
+  background-size: 300% 100%;
+  border-color: transparent;
+}
+.is-skeleton .hist-brand { opacity: 0.3; }
+@media (prefers-reduced-motion: no-preference) {
+  /* The skeleton gets the card's entrance; the real card that replaces it
+     then skips it (.from-skeleton below) and only brings its contents in. */
+  .widget.is-skeleton { animation: w-in-card 1125ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .widget.is-skeleton.no-enter { animation: none; }
+  .is-skeleton :where(
+    .avatar, .dial-bone, .flag, .name-text, .rating-badge,
+    .rating-line > .num-slot, .stat-val, .stat-lbl, .wl-letter, .wl-count,
+    .hist-letters > span
+  ) {
+    animation: bone-sweep 1800ms ease-in-out infinite;
+  }
+  /* The sweep travels left to right across the card. */
+  .is-skeleton .identity-text :is(.name-text, .flag, .num-slot) { animation-delay: 100ms; }
+  .is-skeleton .stats :is(.stat-val, .stat-lbl) { animation-delay: 250ms; }
+  .is-skeleton :is(.wl-letter, .wl-count) { animation-delay: 400ms; }
+  .is-skeleton .hist-letters > span { animation-delay: 150ms; }
+}
+@keyframes bone-sweep {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
 
 /* ---- Number animations -------------------------------------------------- */
 /* NumberFlow (animateNumbers.ts) pads its digits top and bottom so rolling
@@ -482,6 +550,10 @@ number-flow {
   .intro .hist-letters > :nth-child(9) { animation-delay: 1875ms; }
   .intro .hist-letters > :nth-child(10) { animation-delay: 2000ms; }
   .intro .hist-brand { animation: w-in-fade 1250ms ease-out 1500ms both; }
+}
+/* Taking over from the skeleton, the card is already on screen. */
+@media (prefers-reduced-motion: no-preference) {
+  .intro.from-skeleton .widget { animation: none; }
 }
 @keyframes w-in-card { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
 @keyframes w-in-pop  { from { opacity: 0; transform: scale(0.5); } }

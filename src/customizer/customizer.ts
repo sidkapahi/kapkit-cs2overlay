@@ -24,7 +24,8 @@ import {
 } from "../shared/config";
 import { downloadOverlayZip } from "../shared/export";
 import { FONT_WEIGHTS, GOOGLE_FONTS, fontStack, loadFont } from "../shared/fonts";
-import { renderMessage, renderWidget } from "../shared/render";
+import { renderSkeleton, renderWidget } from "../shared/render";
+import { loadSkeletonHint, saveSkeletonHint } from "../shared/skeletonHint";
 import {
   gitHubLogo,
   koFiLogo,
@@ -335,6 +336,9 @@ function promptCardHtml(text: string): string {
 // Animates preview changes: numbers roll, toggled features resize the card
 // smoothly, and a newly loaded player plays the overlay's entrance.
 const animatePreview = createPreviewAnimator();
+// The loading skeleton markup last put in the preview, so re-renders while the
+// data is on its way don't restart it.
+let shownSkeleton = "";
 
 function renderPreview() {
   const body = document.getElementById("preview-widget");
@@ -365,12 +369,27 @@ function renderPreview() {
   if (slot?.status === "loading" || (resolving && !error)) {
     // Switched to a provider whose data is still on its way: keep the card on
     // screen (dimmed) and morph it once the data lands, rather than flashing
-    // a loading state. Only a first load shows "Loading".
-    if (slot && shownKey === key && body.querySelector(".widget:not(.is-message)")) {
+    // a loading state. Only a first load shows the skeleton.
+    if (slot && shownKey === key && body.querySelector(".widget:not(.is-message):not(.is-skeleton)")) {
       body.classList.add("is-pending");
       return;
     }
-    body.innerHTML = renderMessage("Loading", "…");
+    const hint = currentConfig.steamId
+      ? loadSkeletonHint(currentConfig.steamId, currentConfig.provider)
+      : null;
+    const skeleton = renderSkeleton(currentConfig, hint);
+    if (skeleton !== shownSkeleton || !body.querySelector(".is-skeleton")) {
+      // A setting changed mid-load: swap the skeleton without replaying its
+      // entrance.
+      const replacing = !!body.querySelector(".is-skeleton");
+      body.innerHTML = skeleton;
+      if (replacing) body.querySelector(".is-skeleton")?.classList.add("no-enter");
+      shownSkeleton = skeleton;
+    }
+    shownKey = "";
+    fitPreview();
+    updateObsDragLink();
+    return;
   } else {
     body.innerHTML = promptCardHtml(PROMPT_TEXT);
   }
@@ -523,6 +542,7 @@ async function loadPreview(token = ++resolveToken) {
       }
       if (token !== resolveToken) return; // superseded by newer input
       slots[p] = slot;
+      if (slot.status === "ok") saveSkeletonHint(steamId, p, slot.data);
       if (slot.status === "ok" && steamId !== lastTrackedSteamId) {
         // Just a funnel count — no Steam ID sent (we only want *that* someone
         // got this far, not *who*).
