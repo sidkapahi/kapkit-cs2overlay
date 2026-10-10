@@ -5,7 +5,8 @@
 // one requires a client id AND secret (the client-credentials flow) that must
 // stay server-side. This Worker keeps those secrets on Cloudflare and answers a
 // single lookup, adding the CORS headers the browser needs:
-//   • GET ?twitch=<channel-login>  → { live: bool }   (is that channel live now)
+//   • GET ?twitch=<channel-login>  → { live: bool, category: string }
+//     (is that channel live now, and the game it's streaming; '' when offline)
 //
 // It's deliberately separate from the Steam avatar proxy so the two sets of
 // credentials live on different Workers.
@@ -108,7 +109,9 @@ async function resolveTwitchLive(login, env, cors) {
     const data = await res.json();
     const stream = Array.isArray(data?.data) ? data.data[0] : null;
     const live = !!stream && stream.type === 'live';
-    return json({ live }, 200, cors);
+    // game_name is the stream's category (CS2 shows as "Counter-Strike").
+    const category = live && typeof stream.game_name === 'string' ? stream.game_name : '';
+    return json({ live, category }, 200, cors);
   } catch {
     return json({ error: 'Failed to reach the Twitch API' }, 502, cors);
   }

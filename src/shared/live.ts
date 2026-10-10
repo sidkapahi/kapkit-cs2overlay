@@ -4,6 +4,9 @@
 // browser (Twitch/Kick use a client id + secret; YouTube uses an API key), so a
 // small Cloudflare Worker per platform holds the secret, talks to the platform
 // API, and answers a single lookup: `GET {PROXY}?<param>=<channel>` → { live }.
+// Twitch and Kick also send the stream's `category` (game) while live, which
+// goes on the overlay's live analytics events so PostHog's Live Now tile can
+// keep to CS2 streams.
 // The widget just picks the proxy for the configured platform and asks it.
 
 import { fetchWithTimeout } from './fetchWithTimeout';
@@ -34,6 +37,13 @@ export function liveCheckAvailable(platform: '' | LivePlatform): boolean {
   return !!platform && !!PROXIES[platform];
 }
 
+export interface LiveStatus {
+  live: boolean;
+  // The stream's category/game name ('' when offline or the platform doesn't
+  // report one, e.g. YouTube).
+  category: string;
+}
+
 // Resolves whether the given channel is currently live on the given platform.
 // Never throws: on a missing proxy, network error, or unexpected payload it
 // returns `null`, which the caller treats as "status unknown" and leaves the
@@ -42,7 +52,7 @@ export function liveCheckAvailable(platform: '' | LivePlatform): boolean {
 export async function fetchLive(
   platform: '' | LivePlatform,
   channel: string,
-): Promise<boolean | null> {
+): Promise<LiveStatus | null> {
   if (!platform || !channel) return null;
   const proxy = PROXIES[platform];
   if (!proxy) return null;
@@ -53,8 +63,10 @@ export async function fetchLive(
       LIVE_FETCH_TIMEOUT_MS,
     );
     if (!res.ok) return null;
-    const body = (await res.json()) as { live?: unknown };
-    return typeof body.live === 'boolean' ? body.live : null;
+    const body = (await res.json()) as { live?: unknown; category?: unknown };
+    if (typeof body.live !== 'boolean') return null;
+    const category = typeof body.category === 'string' ? body.category : '';
+    return { live: body.live, category };
   } catch {
     return null;
   }

@@ -5,7 +5,8 @@
 // requires a client id AND secret (the OAuth 2.1 client-credentials flow) that
 // must stay server-side. This Worker keeps those secrets on Cloudflare and
 // answers a single lookup, adding the CORS headers the browser needs:
-//   • GET ?kick=<channel-slug>  → { live: bool }   (is that channel live now)
+//   • GET ?kick=<channel-slug>  → { live: bool, category: string }
+//     (is that channel live now, and the category it's in; '' when offline)
 //
 // It's deliberately separate from the other proxies so each platform's
 // credentials live on their own Worker.
@@ -102,7 +103,8 @@ async function resolveKickLive(slug, env, cors) {
     if (!res.ok) return json({ error: `Kick API error: ${res.status}` }, 502, cors);
     const data = await res.json();
     const channel = Array.isArray(data?.data) ? data.data[0] : data?.data ?? data;
-    return json({ live: extractLive(channel) }, 200, cors);
+    const live = extractLive(channel);
+    return json({ live, category: live ? extractCategory(channel) : '' }, 200, cors);
   } catch {
     return json({ error: 'Failed to reach the Kick API' }, 502, cors);
   }
@@ -116,6 +118,17 @@ function extractLive(channel) {
   if (typeof channel.stream?.is_live === 'boolean') return channel.stream.is_live;
   if (typeof channel.is_live === 'boolean') return channel.is_live;
   return !!channel.livestream;
+}
+
+// Pulls the category name (e.g. "Counter-Strike 2") out of a Kick channel
+// object: the official API's top-level `category`, or the older
+// `livestream.categories` list.
+function extractCategory(channel) {
+  if (!channel || typeof channel !== 'object') return '';
+  if (typeof channel.category?.name === 'string') return channel.category.name;
+  const cats = channel.livestream?.categories;
+  if (Array.isArray(cats) && typeof cats[0]?.name === 'string') return cats[0].name;
+  return '';
 }
 
 // App access token cache, shared across requests in a warm isolate. Refreshed
