@@ -150,9 +150,11 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
   // The rating and the change each sit in a fixed slot sized for a five-digit
   // rating (four for FACEIT ELO) and a three-digit change, so the widget keeps one size as the numbers
   // roll and the change arrow stays put instead of sliding with the rating's
-  // width. The change slot is there whenever the change is on, even at 0.
+  // width. The change slot is left out while the change is 0, so the gap to
+  // the stats is the design's 40px (Figma 259:251); the card grows once when
+  // the first gain or loss appears.
   const ratingSlot = numSlot(ratingHtml, ratingGhosts);
-  const diffSlot = config.showChange
+  const diffSlot = diffHtml
     ? numSlot(
         diffHtml,
         DIFF_GHOSTS.map((g) => `<span class="rating-diff positive">${DIFF_ARROW}<span>${g}</span></span>`),
