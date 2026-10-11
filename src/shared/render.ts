@@ -83,6 +83,8 @@ const RATING_GHOSTS = ghosts('##,###');
 const ELO_GHOSTS = ghosts('#,###');
 const DIFF_GHOSTS = ghosts('###');
 const WL_GHOSTS = ghosts('##');
+// The FACEIT rank cycle's minimum name width: 7 characters (see nameHtml).
+const RANK_RESERVE_GHOSTS = ghosts('###,###');
 const STAT_GHOSTS: Record<StatKey, string[]> = {
   kd: ghosts('#.##'),
   avg: ghosts('##'),
@@ -219,11 +221,15 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       // widest of the name and both ranks, and nothing moves as it cycles. A
       // rank is sized for the widest digit (like numSlot), so a rank change
       // that keeps its digit count can't resize the card either.
+      // Sid's call: the slot always has room for at least 7 characters (a
+      // six-digit rank like 222,222 in the widest digits), so a short name
+      // never makes the card grow or shrink when a rank rolls in.
+      const reserve = numSlot('', RANK_RESERVE_GHOSTS, 'num-slot rank-slot slot-ghost');
       const rankLayer = (cls: string, text: string) =>
         text
           ? `<span class="name-layer ${cls}">${numSlot(text, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
           : '';
-      nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack"><span class="name-layer layer-name">${name}</span>${rankLayer(
+      nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer(
         'layer-region',
         regionRank,
       )}${rankLayer('layer-country', countryRank)}</span></div>`;
