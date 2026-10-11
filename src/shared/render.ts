@@ -227,7 +227,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       const reserve = numSlot('', RANK_RESERVE_GHOSTS, 'num-slot rank-slot slot-ghost');
       const rankLayer = (cls: string, text: string) =>
         text
-          ? `<span class="name-layer ${cls}">${numSlot(text, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
+          ? `<span class="name-layer ${cls}">${numSlot(`<span>${text}</span>`, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
           : '';
       nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer(
         'layer-region',

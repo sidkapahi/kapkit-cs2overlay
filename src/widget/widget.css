@@ -427,7 +427,7 @@ body {
 
 /* ---- FACEIT rank cycle ------------------------------------------------- */
 /* After each refresh the name steps name → regional rank → country rank → name
-   (rankCycle.ts sets data-step), with the flag turning into the region icon for
+   (rankCycle.ts sets data-step), with the flag swapping to the region icon for
    the regional step. The layers share one grid cell, so the slot is always as
    wide as the widest of them and nothing moves. The leaving text rolls up and
    out, the next rolls up from below, clipped by .name's overflow. */
@@ -452,30 +452,26 @@ body {
 }
 .name-layer {
   opacity: 0;
-  transform: translateY(70%);
+  transform: translateY(0.75em);
 }
-.name-layer.is-leaving { transform: translateY(-70%); }
+.name-layer.is-leaving { transform: translateY(-0.75em); }
 .has-rank-cycle[data-step='name'] .layer-name,
 .has-rank-cycle[data-step='region'] .layer-region,
 .has-rank-cycle[data-step='country'] .layer-country {
   opacity: 1;
   transform: none;
 }
-/* The flag flips over to the region icon and back: the leaving one turns
-   edge-on, then the next turns in from the other side. */
+/* The flags roll with the text: the leaving one goes up and out with its
+   text, the next comes up from below with its own. */
 .flag-stack > .flag {
   opacity: 0;
-  transform: perspective(80px) rotateY(-90deg);
-  transition-duration: 375ms;
-  transition-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+  transform: translateY(0.75em);
 }
-.flag-stack > .flag.is-leaving { transform: perspective(80px) rotateY(90deg); }
+.flag-stack > .flag.is-leaving { transform: translateY(-0.75em); }
 .has-rank-cycle:not([data-step='region']) .flag-country,
 .has-rank-cycle[data-step='region'] .flag-region {
   opacity: 1;
   transform: none;
-  transition-delay: 375ms;
-  transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
 }
 /* A re-render mid-cycle restores the current step without replaying it. */
 .has-rank-cycle.cycle-instant :is(.name-layer, .flag) { transition: none; }
