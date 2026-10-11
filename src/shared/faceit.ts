@@ -29,6 +29,9 @@ interface FaceitProfile {
   wins: number | null; // TOTAL win/loss over the last ~100 matches
   losses: number | null;
   position: number | null;
+  // Leaderboard positions in the player's region and their country (any level).
+  regionRank?: number | null;
+  countryRank?: number | null;
   matches: FaceitMatch[];
 }
 
@@ -148,6 +151,9 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
     country: typeof p.country === 'string' && p.country ? p.country.toLowerCase() : undefined,
     skillLevel: p.level ?? undefined,
     leaderboardPosition: p.position ?? undefined,
+    region: typeof p.region === 'string' && p.region ? p.region.toLowerCase() : undefined,
+    regionRank: p.regionRank ?? undefined,
+    countryRank: p.countryRank ?? undefined,
     adr: p.adr ?? undefined,
     hsPct: p.hs ?? undefined,
   };

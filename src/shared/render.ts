@@ -2,7 +2,7 @@ import type { PremierData } from './api';
 import { brandLogoSrc } from './brandLogo';
 import { defaultAvatarSrc } from './defaultAvatar';
 import { challengerPosColor, faceitDialSvg, faceitEloColor } from './faceitRanks';
-import { flagUrl } from './flags';
+import { flagUrl, regionFlagUrl } from './flags';
 import { fontStack } from './fonts';
 import { formatRating, getRankTier } from './ranks';
 import { STAT_LABELS, type RankTier, type StatKey, type WidgetConfig } from './types';
@@ -196,16 +196,45 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
   // radius applied in CSS).
   let nameHtml = '';
   if (config.showName) {
-    const flag =
-      isFaceit && config.showFlag && flagUrl(data.country)
-        ? skeleton
-          ? '<span class="flag"></span>'
-          : `<img class="flag" src="${flagUrl(data.country)}" alt="">`
-        : '';
+    const country = flagUrl(data.country);
+    const showFlag = isFaceit && config.showFlag && !!country;
+    // FACEIT rank cycle (rankCycle.ts): after each refresh the flag turns into
+    // the region icon while the name shows the regional rank, then the country
+    // flag returns with the country rank, then the name comes back. Each step
+    // is here only when FACEIT ranks the player there; with neither, the name
+    // renders as before.
+    const region = regionFlagUrl(data.region);
+    const regionRank = showFlag && region && data.regionRank != null ? formatRating(data.regionRank) : '';
+    const countryRank = showFlag && data.countryRank != null ? formatRating(data.countryRank) : '';
     // The skeleton puts the name in its own span so its bar hugs the text, not
     // the flag beside it.
     const name = skeleton ? `<span class="name-text">${esc(data.name)}</span>` : esc(data.name);
-    nameHtml = `<div class="name">${flag}${name}</div>`;
+    if (regionRank || countryRank) {
+      const flags = skeleton
+        ? '<span class="flag"></span>'
+        : `<span class="flag-stack"><img class="flag flag-country" src="${country}" alt="">${
+            regionRank ? `<img class="flag flag-region" src="${region}" alt="">` : ''
+          }</span>`;
+      // Every layer shares one grid cell, so the name slot is as wide as the
+      // widest of the name and both ranks, and nothing moves as it cycles. A
+      // rank is sized for the widest digit (like numSlot), so a rank change
+      // that keeps its digit count can't resize the card either.
+      const rankLayer = (cls: string, text: string) =>
+        text
+          ? `<span class="name-layer ${cls}">${numSlot(text, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
+          : '';
+      nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack"><span class="name-layer layer-name">${name}</span>${rankLayer(
+        'layer-region',
+        regionRank,
+      )}${rankLayer('layer-country', countryRank)}</span></div>`;
+    } else {
+      const flag = showFlag
+        ? skeleton
+          ? '<span class="flag"></span>'
+          : `<img class="flag" src="${country}" alt="">`
+        : '';
+      nameHtml = `<div class="name">${flag}${name}</div>`;
+    }
   }
 
   // W/L record — total wins and losses across the returned recent matches.
@@ -341,6 +370,10 @@ export interface SkeletonHint {
   name: string;
   country?: string;
   games: number;
+  // FACEIT rank cycle: the ranks the name slot is sized to fit.
+  region?: string;
+  regionRank?: number;
+  countryRank?: number;
 }
 
 // Stand-in name for a player we've never loaded: about an average gamertag's
@@ -365,6 +398,9 @@ export function renderSkeleton(config: WidgetConfig, hint?: SkeletonHint | null)
     aimRating: 0,
     // With no hint, assume a flag: most FACEIT players have a country set.
     country: hint ? hint.country : 'us',
+    region: hint?.region,
+    regionRank: hint?.regionRank,
+    countryRank: hint?.countryRank,
     adr: 0,
     hsPct: 0,
   };

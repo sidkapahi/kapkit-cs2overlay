@@ -110,8 +110,8 @@ and, in a single request, resolves a Steam64 ID to everything the overlay needs
 (a CS2 player's FACEIT `game_player_id` is their Steam ID, so the widget keeps
 one identity input): ELO + skill level, lifetime stats (K/D, win rate, ADR, HS%),
 the recent
-match list with per-match kills/deaths, and — for Challenger-tier players — the
-leaderboard position. FACEIT has no batched per-match-stats endpoint, so this
+match list with per-match kills/deaths, and the player's leaderboard position
+in their region and in their country (the Challenger pill uses the regional one). FACEIT has no batched per-match-stats endpoint, so this
 chaining is done on the Worker, keeping the browser to one call.
 
 Unlike the Steam proxy, this one is **required for FACEIT mode** — without it the
@@ -305,6 +305,7 @@ GET /?steam64_id=76561198034202275&history=10
     "avatarUrl": "https://…", "elo": 3200, "eloDiff": 140, "level": 10, "region": "EU",
     "winRate": 0.61, "kd": 1.34, "adr": 92.1, "hs": 0.53,
     "position": 528,                       // Challenger rank, else null
+    "regionRank": 528, "countryRank": 41,  // leaderboard positions, or null
     "matches": [
       { "matchId": "…", "outcome": "win", "kills": 24, "deaths": 15, "adr": 98.2, "hs": 0.58, "eloChange": 23 },
       …

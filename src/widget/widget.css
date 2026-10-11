@@ -425,6 +425,68 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
+/* ---- FACEIT rank cycle ------------------------------------------------- */
+/* After each refresh the name steps name → regional rank → country rank → name
+   (rankCycle.ts sets data-step), with the flag turning into the region icon for
+   the regional step. The layers share one grid cell, so the slot is always as
+   wide as the widest of them and nothing moves. The leaving text rolls up and
+   out, the next rolls up from below, clipped by .name's overflow. */
+.flag-stack,
+.name-stack {
+  display: inline-grid;
+  align-items: center;
+  justify-items: start;
+}
+.flag-stack > *,
+.name-stack > * { grid-area: 1 / 1; }
+.flag-stack { flex-shrink: 0; }
+.rank-slot {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+.name-layer,
+.flag-stack > .flag {
+  transition:
+    opacity 750ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.name-layer {
+  opacity: 0;
+  transform: translateY(70%);
+}
+.name-layer.is-leaving { transform: translateY(-70%); }
+.has-rank-cycle[data-step='name'] .layer-name,
+.has-rank-cycle[data-step='region'] .layer-region,
+.has-rank-cycle[data-step='country'] .layer-country {
+  opacity: 1;
+  transform: none;
+}
+/* The flag flips over to the region icon and back: the leaving one turns
+   edge-on, then the next turns in from the other side. */
+.flag-stack > .flag {
+  opacity: 0;
+  transform: perspective(80px) rotateY(-90deg);
+  transition-duration: 375ms;
+  transition-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+}
+.flag-stack > .flag.is-leaving { transform: perspective(80px) rotateY(90deg); }
+.has-rank-cycle:not([data-step='region']) .flag-country,
+.has-rank-cycle[data-step='region'] .flag-region {
+  opacity: 1;
+  transform: none;
+  transition-delay: 375ms;
+  transition-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+}
+/* A re-render mid-cycle restores the current step without replaying it. */
+.has-rank-cycle.cycle-instant :is(.name-layer, .flag) { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .name-layer,
+  .flag-stack > .flag {
+    transform: none !important;
+    transition-property: opacity;
+  }
+}
+
 /* FACEIT ELO — coloured inline to match the dial (level tier colour, or the
    Challenger colour; see faceitEloColor). White is only the fallback. Tabular
    figures keep it steady as the number changes. */

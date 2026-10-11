@@ -1,7 +1,7 @@
 import type { PremierData } from './api';
 import type { SkeletonHint } from './render';
 
-// Remembers the shape of each player's last card (name, flag, match count) so
+// Remembers the shape of each player's last card (name, flag, ranks, match count) so
 // the next load's skeleton is the exact size of the card that replaces it — no
 // jump when the data lands on a refreshed source or a new-deploy reload.
 // Per Steam ID and provider, since the Steam name and FACEIT nickname differ.
@@ -20,6 +20,9 @@ export function loadSkeletonHint(steamId: string, provider: string): SkeletonHin
       name: parsed.name,
       country: typeof parsed.country === 'string' ? parsed.country : undefined,
       games: parsed.games,
+      region: typeof parsed.region === 'string' ? parsed.region : undefined,
+      regionRank: typeof parsed.regionRank === 'number' ? parsed.regionRank : undefined,
+      countryRank: typeof parsed.countryRank === 'number' ? parsed.countryRank : undefined,
     };
   } catch {
     return null;
@@ -27,7 +30,14 @@ export function loadSkeletonHint(steamId: string, provider: string): SkeletonHin
 }
 
 export function saveSkeletonHint(steamId: string, provider: string, data: PremierData): void {
-  const hint: SkeletonHint = { name: data.name, country: data.country, games: data.recentGames.length };
+  const hint: SkeletonHint = {
+    name: data.name,
+    country: data.country,
+    games: data.recentGames.length,
+    region: data.region,
+    regionRank: data.regionRank,
+    countryRank: data.countryRank,
+  };
   try {
     localStorage.setItem(key(steamId, provider), JSON.stringify(hint));
   } catch {
