@@ -30,7 +30,9 @@ npm run preview   # preview the production build
 The output is a plain static site (the customizer and the widget), deployable to
 any static host. The project deploys to Cloudflare Workers (static assets, see
 `wrangler.jsonc`) via Workers Builds: pushes to `main` go to production at
-`cs2widget.kapkit.ca`, and every other branch gets its own preview URL.
+`cs2widget.kapkit.ca`, and every other branch gets its own preview URL. The
+full setup (previews, PR comments, proxy deploys, Discord notifications) is in
+[DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Optional: avatars & custom profile links (Cloudflare Worker)
 

@@ -172,8 +172,10 @@ To hand-craft the URL, the widget accepts:
 ## For Developers
 
 Local dev, self-hosting, the optional Cloudflare Workers, analytics, and env
-vars are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**; the analytics event
-reference is in **[docs/ANALYTICS.md](docs/ANALYTICS.md)**.
+vars are in **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**; how the site, PR
+previews, proxy Workers and Discord build notifications deploy is in
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**; the analytics event reference is
+in **[docs/ANALYTICS.md](docs/ANALYTICS.md)**.
 
 > [!NOTE]
 > **Built with [Claude Code](https://claude.com/claude-code) from a [Figma](https://www.figma.com) design, with security in mind.**
