@@ -13,9 +13,10 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
-import { createNumberAnimator, playIntro } from './animateNumbers';
+import { createNumberAnimator, INTRO_MS, playIntro } from './animateNumbers';
 import { watchForNewBuild } from './autoReload';
 import { morphCardFrom } from './morphCard';
+import { createRankCycle } from './rankCycle';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -100,6 +101,8 @@ async function init() {
   let lastHtml = '';
   // Rolls each changed number from its previous value instead of swapping it.
   const animateNumbers = createNumberAnimator();
+  // FACEIT: steps the name through the regional and country ranks.
+  const rankCycle = createRankCycle(container);
 
   // Renders whatever we currently know. In session mode it advances the session
   // from the newest live status + matches, then overrides the W/L pills with the
@@ -158,6 +161,8 @@ async function init() {
       playIntro(container);
       const widget = container.querySelector<HTMLElement>('.widget');
       if (widget && skeletonRect) morphCardFrom(widget, skeletonRect);
+    } else {
+      rankCycle.restore();
     }
     animateNumbers(container);
   }
@@ -179,7 +184,10 @@ async function init() {
         lastData = await fetchStats();
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
+        const first = !lastHtml;
         render();
+        // Each refresh shows the ranks once; the first load waits for the intro.
+        rankCycle.play(first ? INTRO_MS : 0);
         return;
       } catch (e) {
         lastError = e;

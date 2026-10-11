@@ -77,6 +77,12 @@ export interface PremierData {
   skillLevel?: number;
   // Challenger leaderboard position (the `#528` pill); only set for level 10.
   leaderboardPosition?: number;
+  // FACEIT region code, lowercase (e.g. 'na'), and the player's leaderboard
+  // position in that region and among its players from their country. The
+  // name cycles through these after each refresh (see rankCycle.ts).
+  region?: string;
+  regionRank?: number;
+  countryRank?: number;
   // Lifetime FACEIT stats for the ADR / HS% stat cells (0..1 for `hsPct`).
   adr?: number;
   hsPct?: number;

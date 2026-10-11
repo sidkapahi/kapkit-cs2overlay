@@ -21,7 +21,7 @@ const FADE_TIMING = { ...NumberFlow.defaultProps.opacityTiming, duration: 1125 }
 
 // How long the first-load entrance (.intro in widget.css) runs, with headroom
 // for the longest delay + duration there.
-const INTRO_MS = 3750;
+export const INTRO_MS = 3750;
 
 // Springy ease (slight overshoot) for the rating-change arrow.
 const ARROW_EASING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';

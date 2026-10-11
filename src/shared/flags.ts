@@ -14,3 +14,14 @@ export function flagUrl(country: string | undefined): string {
   if (!/^[a-z]{2}$/.test(code)) return '';
   return `/flags/${code}.svg`;
 }
+
+// FACEIT's CS2 regions. Their icons are public/flags/regions/<code>.svg (4:3,
+// like the country flags), shown in place of the country flag while the name
+// shows the regional rank.
+const REGIONS = ['eu', 'na', 'sa', 'oce', 'sea'];
+
+// The region icon URL for a FACEIT region code, or '' for one we have no icon for.
+export function regionFlagUrl(region: string | undefined): string {
+  const code = region?.toLowerCase() ?? '';
+  return REGIONS.includes(code) ? `/flags/regions/${code}.svg` : '';
+}

@@ -202,13 +202,18 @@ async function resolveProfile(rawSteam64, history, env, cors) {
     return json({ error: 'That FACEIT player has no CS2 data' }, 404, cors);
   }
 
-  // 2-5. Lifetime stats, recent history, and (only for Challenger) leaderboard
-  // position run in parallel — none depends on the others once we have the id.
-  const [stats, recent, position] = await Promise.all([
+  // 2-5. Lifetime stats, recent history, and the player's leaderboard
+  // positions (in their region, and among their region's players from their
+  // country) run in parallel — none depends on the others once we have the id.
+  const country = typeof player.country === 'string' && player.country ? player.country.toLowerCase() : null;
+  const [stats, recent, regionRank, countryRank] = await Promise.all([
     fetchLifetime(playerId, auth),
     fetchRecentMatches(playerId, history, auth),
-    level === 10 && region ? fetchPosition(playerId, region, auth) : Promise.resolve(null),
+    region ? fetchPosition(playerId, region, null, auth) : Promise.resolve(null),
+    region && country ? fetchPosition(playerId, region, country, auth) : Promise.resolve(null),
   ]);
+  // The Challenger pill is the regional position, shown only for level 10.
+  const position = level === 10 ? regionRank : null;
 
   // 6. Record this poll's ELO and read back the per-match changes recorded so
   // far (see trackElo). Attach each shown match's change (e.g. +23 / -12) for
@@ -227,7 +232,7 @@ async function resolveProfile(rawSteam64, history, env, cors) {
     {
       nickname: player.nickname ?? '',
       playerId,
-      country: typeof player.country === 'string' ? player.country.toLowerCase() : null,
+      country,
       avatarUrl: typeof player.avatar === 'string' ? player.avatar : '',
       elo: num(cs2.faceit_elo),
       level,
@@ -247,6 +252,12 @@ async function resolveProfile(rawSteam64, history, env, cors) {
       losses: recent.losses,
       // Challenger leaderboard position (the `#528` pill), else null.
       position,
+      // Leaderboard position in the player's region (e.g. 222222 in NA) and
+      // among that region's players from their country (e.g. 6357 in Canada),
+      // for every level; null when FACEIT doesn't list them. The widget cycles
+      // the name through these after each refresh.
+      regionRank,
+      countryRank,
       matches,
     },
     200,
@@ -467,12 +478,14 @@ function findPlayerStats(stats, playerId) {
   return null;
 }
 
-// Challenger leaderboard position. Only meaningful for level-10 players; the
-// endpoint returns the player's ranking within their region's CS2 leaderboard.
-async function fetchPosition(playerId, region, auth) {
+// The player's position on their region's CS2 leaderboard, or — with a country
+// code — among that region's players from that country. Every level is ranked;
+// the Challenger pill shows the regional one.
+async function fetchPosition(playerId, region, country, auth) {
+  const countryParam = country ? `&country=${encodeURIComponent(country)}` : '';
   try {
     const res = await fetch(
-      `${FACEIT_BASE}/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}?limit=1`,
+      `${FACEIT_BASE}/rankings/games/cs2/regions/${encodeURIComponent(region)}/players/${playerId}?limit=1${countryParam}`,
       { ...auth, cf: { cacheTtl: 300, cacheEverything: true } },
     );
     if (!res.ok) return null;
