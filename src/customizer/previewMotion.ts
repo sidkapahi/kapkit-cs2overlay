@@ -18,8 +18,18 @@ const RESIZE_MS = 1125;
 // with its parent's. A stat is keyed by its own class so turning one stat on or
 // off moves the others rather than re-keying them.
 const MOVING_PARTS = ['.avatar', '.faceit-rank', '.identity-text', '.stat', '.wl', '.hist-letters', '.hist-brand'];
-// Pieces inside those that only fade in when switched on.
-const APPEARING_PARTS = ['.name', '.flag', '.diff-slot', '.rating-badge:not(.slot-ghost *)'];
+// Pieces inside those that only fade in when switched on. With the FACEIT rank
+// cycle the flag is a stack of the country flag and the region icon, and only
+// one is meant to be visible (widget.css). A fade-in animating each img's
+// opacity would override that and flash the region icon on top, so the stack
+// fades in as one piece instead of its flags.
+const APPEARING_PARTS = [
+  '.name',
+  '.flag-stack',
+  '.flag:not(.flag-stack > *)',
+  '.diff-slot',
+  '.rating-badge:not(.slot-ghost *)',
+];
 const PART_SELECTOR = [...MOVING_PARTS, ...APPEARING_PARTS].join(', ');
 
 function partKey(el: Element): string {
