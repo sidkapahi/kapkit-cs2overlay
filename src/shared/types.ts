@@ -55,6 +55,9 @@ export interface LeetifyMatch {
   // proxy Worker's ELO tracker. Undefined for Premier, or for a match played
   // before tracking started (the chip then shows its W/L letter).
   eloChange?: number;
+  // FACEIT only: average damage per round in this match. Leetify's profile
+  // payload has no per-match ADR, so it stays undefined for Premier.
+  adr?: number;
 }
 
 // Kept as an alias so widget.ts's existing rendering code doesn't need renaming.

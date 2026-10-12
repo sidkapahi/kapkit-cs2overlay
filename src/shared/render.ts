@@ -253,15 +253,25 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     </div>`;
   }
 
-  // Stats block: the user-picked subset of K/D, average kills, aim rating, and
-  // win rate over the tracked matches (order follows config.stats). K/D is
-  // rounded to 2 decimals (1.158 → 1.16); everything else is truncated to whole
-  // numbers (18.9 → 18).
+  // Stats block: the user-picked subset of K/D, average kills, aim rating, win
+  // rate, ADR and HS % (order follows config.stats). Every per-match stat is
+  // taken over the same tracked window (the last matchCount matches), so the
+  // row reads as one "recent form" summary rather than mixing lifetime and
+  // recent numbers. Aim rating is Leetify's own profile rating. K/D is rounded
+  // to 2 decimals (1.158 → 1.16); everything else is truncated to whole numbers
+  // (18.9 → 18).
   let statsHtml = '';
   if (config.showStats && config.stats.length > 0) {
     const withKd = recent.filter((g) => g.kills != null && g.deaths != null);
     const totalKills = withKd.reduce((s, g) => s + g.kills!, 0);
     const totalDeaths = withKd.reduce((s, g) => s + g.deaths!, 0);
+    const mean = (vals: number[]) => (vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null);
+    // Win rate counts ties as played-but-not-won, like FACEIT and Leetify do.
+    const winRate = recent.length ? recent.filter((g) => g.outcome === 'win').length / recent.length : null;
+    const adr = mean(recent.map((g) => g.adr).filter((v): v is number => typeof v === 'number'));
+    // HS % on a 0..100 scale: Leetify's headshot accuracy (Premier) or FACEIT's
+    // headshot-kill share. 0 means the match has no value, so it's skipped.
+    const hs = mean(recent.map((g) => g.accuracy_head).filter((v) => typeof v === 'number' && v > 0));
     // Drop the fractional part without rounding. The tiny epsilon absorbs float
     // error so e.g. 0.58 * 100 (= 57.99999999999999) still shows as 58.
     const whole = (n: number) => `${Math.trunc(n + 1e-9)}`;
@@ -271,9 +281,9 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       aim: whole(data.aimRating),
       // Percentages drop the "%" from the value — the "WIN %" / "HS %" label
       // below the number already carries it.
-      winpct: whole((data.winRate ?? 0) * 100),
-      adr: data.adr != null ? whole(data.adr) : '—',
-      hs: data.hsPct != null ? whole(data.hsPct * 100) : '—',
+      winpct: winRate != null ? whole(winRate * 100) : '—',
+      adr: adr != null ? whole(adr) : '—',
+      hs: hs != null ? whole(hs) : '—',
     };
     const cells = config.stats
       .map((k) => {
@@ -397,18 +407,15 @@ export function renderSkeleton(config: WidgetConfig, hint?: SkeletonHint | null)
     avatarUrl: '',
     rating: 0,
     ratingDiff: 0,
-    winRate: 0,
     wins: 0,
     losses: 0,
-    recentGames: Array.from({ length: games }, () => ({ outcome: 'win', kills: 0, deaths: 1 }) as PremierData['recentGames'][number]),
+    recentGames: Array.from({ length: games }, () => ({ outcome: 'win', kills: 0, deaths: 1, adr: 0, accuracy_head: 1 }) as PremierData['recentGames'][number]),
     aimRating: 0,
     // With no hint, assume a flag: most FACEIT players have a country set.
     country: hint ? hint.country : 'us',
     region: hint?.region,
     regionRank: hint?.regionRank,
     countryRank: hint?.countryRank,
-    adr: 0,
-    hsPct: 0,
   };
   return renderWidget(config, data, true);
 }

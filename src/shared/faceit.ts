@@ -47,9 +47,12 @@ interface FaceitMatch {
 }
 
 // Builds a minimal LeetifyGame from a FACEIT match. `render.ts` reads only
-// `outcome`, `kills`, `deaths`, and `eloChange` off recent games (for the history
-// strip and the K/D · AVG stat cells), so the other fields are filled with inert defaults
-// to satisfy the shared type without inventing data.
+// `outcome`, `kills`, `deaths`, `adr`, `accuracy_head`, and `eloChange` off
+// recent games (for the history strip and the stat cells), so the other fields
+// are filled with inert defaults to satisfy the shared type without inventing
+// data. FACEIT's per-match HS% goes in `accuracy_head` on the same 0..100 scale
+// Leetify uses, so the HS % cell averages both providers the same way (0 means
+// unknown and is skipped).
 function toGame(m: FaceitMatch): LeetifyGame {
   return {
     id: m.matchId ?? '',
@@ -63,10 +66,11 @@ function toGame(m: FaceitMatch): LeetifyGame {
     preaim: 0,
     reaction_time_ms: 0,
     accuracy_enemy_spotted: 0,
-    accuracy_head: 0,
+    accuracy_head: m.hs != null ? m.hs * 100 : 0,
     spray_accuracy: 0,
     kills: m.kills ?? undefined,
     deaths: m.deaths ?? undefined,
+    adr: m.adr ?? undefined,
     eloChange: typeof m.eloChange === 'number' ? m.eloChange : undefined,
   };
 }
@@ -143,7 +147,6 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
     // hides the pill. Live-session mode overrides this client-side with the ELO
     // gained/lost across the stream (see widget.ts).
     ratingDiff: p.eloDiff ?? 0,
-    winRate: p.winRate ?? 0,
     wins,
     losses,
     recentGames,
@@ -154,7 +157,5 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
     region: typeof p.region === 'string' && p.region ? p.region.toLowerCase() : undefined,
     regionRank: p.regionRank ?? undefined,
     countryRank: p.countryRank ?? undefined,
-    adr: p.adr ?? undefined,
-    hsPct: p.hs ?? undefined,
   };
 }

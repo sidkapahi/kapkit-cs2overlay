@@ -61,8 +61,6 @@ export interface PremierData {
   // Premier rank-point swing from the previous Premier match to the most recent
   // one (e.g. +250). 0 when it can't be derived from the recent matches.
   ratingDiff: number;
-  // Overall win rate as a fraction (0..1), from the profile payload.
-  winRate: number;
   // Win / loss counts across the returned recent matches (ties excluded).
   wins: number;
   losses: number;
@@ -83,9 +81,6 @@ export interface PremierData {
   region?: string;
   regionRank?: number;
   countryRank?: number;
-  // Lifetime FACEIT stats for the ADR / HS% stat cells (0..1 for `hsPct`).
-  adr?: number;
-  hsPct?: number;
 }
 
 // Maps a fetch/resolve failure to a coarse, non-PII reason code for analytics,
@@ -193,29 +188,15 @@ export async function fetchPremierData(steamId: string): Promise<PremierData> {
   const wins = premierGames.filter((g) => g.outcome === 'win').length;
   const losses = premierGames.filter((g) => g.outcome === 'loss').length;
 
-  // Headshot % — Leetify's `accuracy_head` (the share of a player's hits that
-  // were headshots, i.e. Leetify's "Headshot Accuracy"), averaged over the
-  // recent matches. The API returns it on a 0..100 scale (verified against a
-  // live profile), so divide by 100 to the 0..1 fraction render.ts expects — the
-  // same convention as the FACEIT HS% cell.
-  const headVals = recentGames
-    .map((g) => g.accuracy_head)
-    .filter((v): v is number => typeof v === 'number' && v > 0);
-  const hsPct = headVals.length
-    ? headVals.reduce((s, v) => s + v, 0) / headVals.length / 100
-    : undefined;
-
   return {
     name: data.name,
     avatarUrl,
     rating: data.ranks.premier,
     ratingDiff,
-    winRate: data.winrate ?? 0,
     wins,
     losses,
     recentGames,
     aimRating: data.rating.aim,
-    hsPct,
   };
 }
 
