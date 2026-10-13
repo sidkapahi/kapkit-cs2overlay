@@ -79,11 +79,22 @@ export function advanceSession(
 
   // Accumulate only while live. A finished match lingers in the window across
   // many polls, so missing a single poll (e.g. a null blip) never drops a game.
+  //
+  // `recent` is newest-first, so a session match is one that comes before
+  // every pre-session match in it. Matches below the newest pre-session one
+  // are older than the stream even when their ids weren't snapshotted: the
+  // window can be deeper now than at go-live (it grew from 10 to 30 matches
+  // when the stats window did, which counted 20 old matches as this stream's).
+  // Those are skipped, and dropped from the results if an earlier poll counted
+  // them, which repairs a record stored before this check.
   if (state.live) {
     const preSet = new Set(state.preSessionIds);
-    for (const m of recent) {
-      if (!preSet.has(m.id)) state.results[m.id] = m.outcome;
-    }
+    const firstPre = recent.findIndex((m) => preSet.has(m.id));
+    const cutoff = firstPre === -1 ? recent.length : firstPre;
+    recent.forEach((m, i) => {
+      if (i < cutoff) state.results[m.id] = m.outcome;
+      else if (!preSet.has(m.id)) delete state.results[m.id];
+    });
   }
 
   return state;
