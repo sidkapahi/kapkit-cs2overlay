@@ -329,7 +329,7 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
     shown.map(async (item) => {
       const matchId = item?.match_id ?? null;
       const outcome = outcomeFor(item, playerId);
-      const base = { matchId, outcome, kills: null, deaths: null, adr: null, hs: null };
+      const base = { matchId, outcome, kills: null, deaths: null, adr: null, hs: null, rounds: null };
       if (!matchId) return base;
 
       try {
@@ -341,8 +341,9 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
         });
         if (!res.ok) return base;
         const stats = await res.json();
-        const me = findPlayerStats(stats, playerId);
-        if (!me) return base;
+        const found = findPlayerStats(stats, playerId);
+        if (!found) return base;
+        const me = found.stats;
         const hs = num(me['Headshots %']);
         return {
           ...base,
@@ -350,6 +351,9 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
           deaths: num(me['Deaths']),
           adr: num(me['ADR']) ?? num(me['Average Damage per Round']),
           hs: hs == null ? null : hs / 100,
+          // Rounds played, so the widget can weight ADR by match length the
+          // way FACEIT's own "last 30" ADR does (total damage ÷ total rounds).
+          rounds: found.rounds,
         };
       } catch {
         return base;
@@ -465,9 +469,11 @@ function outcomeFor(item, playerId) {
   return faction === winner ? 'win' : 'loss';
 }
 
-// Digs the player's per-match stat block out of a /matches/{id}/stats payload.
-// A CS2 match is a single entry in `rounds`; each team lists its players with a
-// `player_stats` object keyed by human-readable stat names.
+// Digs the player's per-match stat block out of a /matches/{id}/stats payload,
+// with the match's round count, as { stats, rounds }. A CS2 match is a single
+// entry in `rounds` (its `round_stats.Rounds` is the number of rounds played);
+// each team lists its players with a `player_stats` object keyed by
+// human-readable stat names.
 function findPlayerStats(stats, playerId) {
   const rounds = Array.isArray(stats?.rounds) ? stats.rounds : [];
   for (const round of rounds) {
@@ -475,7 +481,7 @@ function findPlayerStats(stats, playerId) {
     for (const team of teams) {
       const players = Array.isArray(team?.players) ? team.players : [];
       const me = players.find((p) => p?.player_id === playerId);
-      if (me?.player_stats) return me.player_stats;
+      if (me?.player_stats) return { stats: me.player_stats, rounds: num(round?.round_stats?.Rounds) };
     }
   }
   return null;
