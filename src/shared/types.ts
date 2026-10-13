@@ -193,6 +193,11 @@ export function radiusAllowed(radius: CornerRadius, showMatchHistory: boolean): 
   return !(showMatchHistory && radius === 100);
 }
 
+// How many recent matches the stats cells (K/D, AVG, WIN %, ADR, HS %) cover,
+// for both providers. Fixed rather than tied to matchCount, which sets how many
+// letters the match-history strip shows, so the strip keeps its width.
+export const STATS_MATCHES = 30;
+
 export const DEFAULT_CONFIG: WidgetConfig = {
   provider: 'leetify',
   steamId: '',

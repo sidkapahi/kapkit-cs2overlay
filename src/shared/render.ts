@@ -5,7 +5,7 @@ import { challengerPosColor, faceitDialSvg, faceitEloColor } from './faceitRanks
 import { flagUrl, regionFlagUrl } from './flags';
 import { fontStack } from './fonts';
 import { formatRating, getRankTier } from './ranks';
-import { STAT_LABELS, type RankTier, type StatKey, type WidgetConfig } from './types';
+import { STAT_LABELS, STATS_MATCHES, type RankTier, type StatKey, type WidgetConfig } from './types';
 
 // Escapes user-controlled text (the player name) before it goes into innerHTML.
 function esc(s: string): string {
@@ -110,9 +110,9 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
   // Challenger = a level-10 player who holds a leaderboard position (#528).
   const isChallenger = isFaceit && data.leaderboardPosition != null;
   const tier = getRankTier(data.rating);
-  // Stats are averaged over the whole recent window; the history strip caps at 5
-  // when stats are hidden (see historyCount below).
-  const recent = data.recentGames.slice(0, config.matchCount);
+  // Stats cover the last STATS_MATCHES matches; the history strip shows
+  // matchCount of them, capped at 5 when stats are hidden (see historyCount).
+  const recent = data.recentGames.slice(0, STATS_MATCHES);
 
   // Rating — provider-specific. Premier: the rank badge or a rank-coloured
   // number. FACEIT: the ELO, tinted with the skill-level colour — the dial art
@@ -255,7 +255,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
 
   // Stats block: the user-picked subset of K/D, average kills, aim rating, win
   // rate, ADR and HS % (order follows config.stats). Every per-match stat is
-  // taken over the same tracked window (the last matchCount matches), so the
+  // taken over the same window (the last STATS_MATCHES matches), so the
   // row reads as one "recent form" summary rather than mixing lifetime and
   // recent numbers. Aim rating is Leetify's own profile rating. K/D is rounded
   // to 2 decimals (1.158 → 1.16); everything else is truncated to whole numbers

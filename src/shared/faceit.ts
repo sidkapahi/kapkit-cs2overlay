@@ -111,7 +111,7 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
   }
 
   const params = new URLSearchParams({ steam64_id: id });
-  // How many recent matches to pull (the Worker clamps to 1..20). Driven by the
+  // How many recent matches to pull (the Worker clamps to 1..30). Driven by the
   // stats toggle so the history strip gets the right depth.
   if (history != null && Number.isFinite(history)) params.set('history', String(Math.trunc(history)));
 

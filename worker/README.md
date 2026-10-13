@@ -313,7 +313,7 @@ GET /?steam64_id=76561198034202275&history=10
   }
 ```
 
-`history` is optional (default 10, capped at 20). Lifetime fields the API
+`history` is optional (default 10, capped at 30). Lifetime fields the API
 doesn't expose come back `null`; a per-match stat that can't be fetched leaves
 that match's `kills`/`deaths` `null` but keeps its `outcome`. `eloChange` is the
 ELO gained/lost in that match and `eloDiff` their sum across the window (the
