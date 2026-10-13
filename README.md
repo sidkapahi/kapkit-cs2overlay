@@ -161,7 +161,7 @@ To hand-craft the URL, the widget accepts:
 | `stats`      | per source | `off` to hide, or up to three of `kd`, `avg`, `aim`, `winpct`, `adr`, `hs` (e.g. `kd,adr,hs`). Defaults to `kd,avg,aim` (Premier) or `kd,avg,adr` (FACEIT); `aim` is Premier only, `adr` FACEIT only |
 | `history`    | `0`       | Show match history (`1`)           |
 | `hist`       | `wl`      | FACEIT only: `elo` shows ELO per match in the history |
-| `matchCount` | `10`      | Number of recent matches (FACEIT shows at most 5 when stats are hidden or in ELO mode) |
+| `matchCount` | `10`      | Number of recent matches in the match-history strip (at most 5 when stats are hidden or in FACEIT ELO mode). The stats cells always cover the last 30 matches |
 | `refresh`    | `60`      | Stats refresh interval in seconds  |
 | `font`       | `Inter`   | Any Google Font name               |
 | `fw`         | `700`     | Font weight, `100`–`900`           |

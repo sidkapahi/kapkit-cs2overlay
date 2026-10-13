@@ -5,6 +5,7 @@ import {
   HISTORY_FALLBACK_RADIUS,
   PROVIDER_STATS,
   STAT_MAX,
+  STATS_MATCHES,
   radiusAllowed,
   type CornerRadius,
   type LivePlatform,
@@ -113,11 +114,12 @@ export function parseLiveInput(raw: string): LiveChannel | null {
   return normalizeLiveChannel('twitch', s);
 }
 
-// How many recent matches the FACEIT provider should fetch: 10 when the stats
-// block is shown, 5 when it isn't (per the design — a shorter history strip),
-// bounded by the configured matchCount.
+// How many recent matches the FACEIT provider should fetch: with the stats
+// block shown, enough for both the stats window (STATS_MATCHES) and the history
+// strip (matchCount); without it, the strip's 5 (per the design — a shorter
+// history strip), bounded by the configured matchCount.
 export function faceitHistoryCount(config: WidgetConfig): number {
-  return config.showStats ? config.matchCount : Math.min(5, config.matchCount);
+  return config.showStats ? Math.max(STATS_MATCHES, config.matchCount) : Math.min(5, config.matchCount);
 }
 
 export function configToParams(config: WidgetConfig): URLSearchParams {

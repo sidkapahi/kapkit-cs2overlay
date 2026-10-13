@@ -43,6 +43,7 @@ import {
   PROVIDER_STATS,
   STAT_LABELS,
   STAT_MAX,
+  STATS_MATCHES,
   type CornerRadius,
   type Provider,
   type StatKey,
@@ -524,10 +525,11 @@ async function loadPreview(token = ++resolveToken) {
   const steamId = currentConfig.steamId;
   const fetchers: Record<Provider, () => Promise<PremierData>> = {
     leetify: () => fetchPremierData(steamId),
-    // Fetch up to matchCount so toggling the stats block (which caps the strip
-    // at 5) never needs a re-fetch; the widget itself fetches the exact 5/10
+    // Fetch the most the card can use (the stats window or the history strip,
+    // whichever is longer) so toggling the stats block (which caps the strip
+    // at 5) never needs a re-fetch; the widget itself fetches the exact count
     // via faceitHistoryCount.
-    faceit: () => fetchFaceitData(steamId, currentConfig.matchCount),
+    faceit: () => fetchFaceitData(steamId, Math.max(STATS_MATCHES, currentConfig.matchCount)),
   };
   const providers = Object.keys(fetchers) as Provider[];
   for (const p of providers) slots[p] = { status: "loading" };

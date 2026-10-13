@@ -64,10 +64,13 @@ const ELO_KEEP = 20;
 // genuinely didn't change ELO, e.g. a cancelled one, shouldn't hang forever).
 const ELO_PENDING_MS = 30 * 60 * 1000;
 
-// How many recent matches to pull per-match stats for. The history strip shows
-// up to matchCount (default 10) and K/D is averaged over the same window, so 20
-// is a safe cap. Each match is one extra FACEIT request, done in parallel.
-const HISTORY_MAX = 20;
+// How many recent matches to pull per-match stats for. The stats cells cover
+// the last 30 matches (STATS_MATCHES in src/shared/types.ts) and the history
+// strip up to matchCount (default 10), so 30 is the cap. Each match is one
+// extra FACEIT request, done in parallel and cached for a day once fetched;
+// with the player, history, lifetime and two ranking calls that's 35
+// subrequests, inside the Workers free plan's 50.
+const HISTORY_MAX = 30;
 // How many recent matches to tally for the TOTAL win/loss record. Outcomes come
 // straight from the history list (no per-match calls), so this is one cheap
 // request regardless of size — the widget's "TOTAL" pills show the season here.

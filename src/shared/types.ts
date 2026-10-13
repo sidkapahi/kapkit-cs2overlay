@@ -55,6 +55,9 @@ export interface LeetifyMatch {
   // proxy Worker's ELO tracker. Undefined for Premier, or for a match played
   // before tracking started (the chip then shows its W/L letter).
   eloChange?: number;
+  // FACEIT only: average damage per round in this match. Leetify's profile
+  // payload has no per-match ADR, so it stays undefined for Premier.
+  adr?: number;
 }
 
 // Kept as an alias so widget.ts's existing rendering code doesn't need renaming.
@@ -189,6 +192,11 @@ export const HISTORY_FALLBACK_RADIUS: CornerRadius = 32;
 export function radiusAllowed(radius: CornerRadius, showMatchHistory: boolean): boolean {
   return !(showMatchHistory && radius === 100);
 }
+
+// How many recent matches the stats cells (K/D, AVG, WIN %, ADR, HS %) cover,
+// for both providers. Fixed rather than tied to matchCount, which sets how many
+// letters the match-history strip shows, so the strip keeps its width.
+export const STATS_MATCHES = 30;
 
 export const DEFAULT_CONFIG: WidgetConfig = {
   provider: 'leetify',
