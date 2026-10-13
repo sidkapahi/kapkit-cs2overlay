@@ -268,15 +268,7 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     const mean = (vals: number[]) => (vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null);
     // Win rate counts ties as played-but-not-won, like FACEIT and Leetify do.
     const winRate = recent.length ? recent.filter((g) => g.outcome === 'win').length / recent.length : null;
-    // ADR is total damage ÷ total rounds, like FACEIT's own "last 30" panel, so
-    // a long overtime match counts for more than a short stomp. Falls back to
-    // the plain average when a match's round count is missing.
-    const adrGames = recent.filter((g) => typeof g.adr === 'number');
-    const allRounds = adrGames.length > 0 && adrGames.every((g) => typeof g.rounds === 'number' && g.rounds > 0);
-    const totalRounds = adrGames.reduce((s, g) => s + (g.rounds ?? 0), 0);
-    const adr = allRounds
-      ? adrGames.reduce((s, g) => s + g.adr! * g.rounds!, 0) / totalRounds
-      : mean(adrGames.map((g) => g.adr!));
+    const adr = mean(recent.map((g) => g.adr).filter((v): v is number => typeof v === 'number'));
     // HS % on a 0..100 scale: Leetify's headshot accuracy (Premier) or FACEIT's
     // headshot-kill share. 0 means the match has no value, so it's skipped.
     const hs = mean(recent.map((g) => g.accuracy_head).filter((v) => typeof v === 'number' && v > 0));

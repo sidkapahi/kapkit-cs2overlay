@@ -42,8 +42,6 @@ interface FaceitMatch {
   deaths: number | null;
   adr: number | null;
   hs: number | null;
-  // Rounds played; absent from Workers deployed before it was added.
-  rounds?: number | null;
   // ELO gained/lost in this match (e.g. +23); null when the Worker couldn't derive it.
   eloChange?: number | null;
 }
@@ -73,7 +71,6 @@ function toGame(m: FaceitMatch): LeetifyGame {
     kills: m.kills ?? undefined,
     deaths: m.deaths ?? undefined,
     adr: m.adr ?? undefined,
-    rounds: m.rounds ?? undefined,
     eloChange: typeof m.eloChange === 'number' ? m.eloChange : undefined,
   };
 }

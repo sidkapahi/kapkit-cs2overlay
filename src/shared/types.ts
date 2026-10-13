@@ -58,9 +58,6 @@ export interface LeetifyMatch {
   // FACEIT only: average damage per round in this match. Leetify's profile
   // payload has no per-match ADR, so it stays undefined for Premier.
   adr?: number;
-  // FACEIT only: rounds played in this match, used to weight ADR by match
-  // length. Undefined for Premier.
-  rounds?: number;
 }
 
 // Kept as an alias so widget.ts's existing rendering code doesn't need renaming.
