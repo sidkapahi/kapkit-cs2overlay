@@ -512,6 +512,25 @@ body {
   opacity: 1;
   transform: none;
 }
+/* Name ↔ rank: textTicker.ts rolls each character in .name-ticker while the
+   real layers wait hidden underneath. */
+.has-rank-cycle.is-ticking .name-layer { opacity: 0 !important; transition: none; }
+.name-ticker {
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  white-space: pre;
+}
+.tick-col {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+}
+.tick-reel {
+  display: flex;
+  flex-direction: column;
+}
+.tick-reel > span { height: 1em; line-height: 1; }
 /* A re-render mid-cycle restores the current step without replaying it, and
    an inline flag that comes in with the rank is already the right one. */
 .has-rank-cycle.cycle-instant :is(.name-layer, .flag, .flag-reveal, .flag-stack),

@@ -13,6 +13,7 @@
 // A step FACEIT doesn't rank the player in is skipped.
 import NumberFlow from 'number-flow';
 import { FADE_TIMING, ROLL_TIMING, reducedMotion } from './animateNumbers';
+import { tickText } from './textTicker';
 
 type Step = 'name' | 'region' | 'country';
 type Flag = 'country' | 'region';
@@ -24,6 +25,8 @@ const ROLL_MS = 1875;
 const TICK_MS = ROLL_TIMING.duration;
 // The gap opening / closing and the flag dropping (.flag-reveal).
 const MOVE_MS = 1500;
+// The flag starts moving in (or the text back) this far into the move before.
+const OVERLAP = 0.8;
 // Just past the longest of them, for clearing .is-leaving.
 const LEAVE_MS = 2000;
 
@@ -101,13 +104,34 @@ export function createRankCycle(container: HTMLElement) {
     await wait(MOVE_MS);
   }
 
-  // The text rolls between the name and the rank.
+  // The text changes between the name and the rank: each character ticks
+  // over to the new one (textTicker.ts), or with reduced motion the two just
+  // swap.
   async function rollText(el: HTMLElement, next: Step) {
-    leave(el.querySelector<HTMLElement>(next === 'name' ? '.layer-rank' : '.layer-name'));
-    if (next !== 'name') setRankText(el, rankFor(el, next)!);
+    const textOf = (s: Step) => (s === 'name' ? el.querySelector('.layer-name')?.textContent ?? '' : formatRank(rankFor(el, s)!));
+    const from = textOf(step);
+    const to = textOf(next);
+    const layer = el.querySelector<HTMLElement>('.layer-name');
+    if (!reducedMotion() && layer?.parentElement) {
+      const host = document.createElement('span');
+      host.className = 'name-ticker';
+      host.setAttribute('aria-hidden', 'true');
+      layer.parentElement.appendChild(host);
+      el.classList.add('is-ticking');
+      const widget = el.closest<HTMLElement>('.widget');
+      const scale = widget && widget.offsetWidth ? widget.getBoundingClientRect().width / widget.offsetWidth : 1;
+      await tickText(host, from, to, ROLL_MS, scale);
+      host.remove();
+    }
     step = next;
-    el.dataset.step = next;
-    await wait(ROLL_MS);
+    // A re-render may have swapped the markup while it ticked.
+    const now = nameEl() ?? el;
+    if (next !== 'name') setRankText(now, rankFor(now, next)!);
+    now.classList.add('cycle-instant');
+    now.dataset.step = next;
+    now.classList.remove('is-ticking');
+    void now.offsetWidth;
+    now.classList.remove('cycle-instant');
   }
 
   async function show(next: Step) {
@@ -125,7 +149,8 @@ export function createRankCycle(container: HTMLElement) {
         apply(el, true);
         gap = true;
         el.setAttribute('data-gap', '');
-        await wait(MOVE_MS);
+        // Sid: the flag starts dropping once the slide is 80% done.
+        await wait(MOVE_MS * OVERLAP);
         flagIn = true;
         el.setAttribute('data-flag-in', '');
         await wait(MOVE_MS);
@@ -147,7 +172,7 @@ export function createRankCycle(container: HTMLElement) {
         leave(el.querySelector<HTMLElement>('.flag-reveal > .flag-stack'));
         flagIn = false;
         el.removeAttribute('data-flag-in');
-        await wait(MOVE_MS);
+        await wait(MOVE_MS * OVERLAP);
         gap = false;
         el.removeAttribute('data-gap');
         await wait(MOVE_MS);
