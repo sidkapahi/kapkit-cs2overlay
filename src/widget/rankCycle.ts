@@ -3,8 +3,9 @@
 // name rolls over to the regional rank, then the country flag comes back and
 // the rank ticks over to the country rank, then the name returns. render.ts
 // draws the layers (see .has-rank-cycle in widget.css); this sets the data
-// attributes that drive them, one move at a time (Sid: the text never changes
-// while the flag is still moving):
+// attributes that drive them. Coming in and going out run one move at a time
+// (Sid: the text never changes while the flag is still moving there); between
+// the two ranks the flag and the tick run together:
 //   data-step     which text shows (name, or the rank)
 //   data-flag     which flag shows (country or region)
 //   data-gap      flag off only: the gap for the flag is open
@@ -133,8 +134,8 @@ export function createRankCycle(container: HTMLElement) {
       }
       await rollText(el, next);
     } else if (next !== 'name') {
-      // Region → country: the flag rolls over, then the rank ticks.
-      await rollFlag(el, nextFlag);
+      // Region → country: the flag rolls over as the rank ticks.
+      void rollFlag(el, nextFlag);
       step = next;
       el.dataset.step = next;
       tickRank(el, rankFor(el, next)!);
