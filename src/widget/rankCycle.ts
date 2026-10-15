@@ -25,8 +25,10 @@ const ROLL_MS = 1875;
 const TICK_MS = ROLL_TIMING.duration;
 // The gap opening / closing and the flag dropping (.flag-reveal).
 const MOVE_MS = 1500;
-// The flag starts moving in (or the text back) this far into the move before.
-const OVERLAP = 0.8;
+// The flag starts moving in (or the text back) once the move before has gone
+// 80% of its distance. The ease (cubic-bezier(0.2, 0.8, 0.2, 1)) front-loads
+// the motion, so that's 27.5% of its time, not 80%.
+const OVERLAP = 0.275;
 // Just past the longest of them, for clearing .is-leaving.
 const LEAVE_MS = 2000;
 
@@ -149,7 +151,7 @@ export function createRankCycle(container: HTMLElement) {
         apply(el, true);
         gap = true;
         el.setAttribute('data-gap', '');
-        // Sid: the flag starts dropping once the slide is 80% done.
+        // Sid: the flag starts dropping once the slide is 80% of the way there.
         await wait(MOVE_MS * OVERLAP);
         flagIn = true;
         el.setAttribute('data-flag-in', '');
