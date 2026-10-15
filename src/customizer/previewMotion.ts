@@ -22,10 +22,12 @@ const MOVING_PARTS = ['.avatar', '.faceit-rank', '.identity-text', '.stat', '.wl
 // cycle the flag is a stack of the country flag and the region icon, and only
 // one is meant to be visible (widget.css). A fade-in animating each img's
 // opacity would override that and flash the region icon on top, so the stack
-// fades in as one piece instead of its flags.
+// fades in as one piece instead of its flags. With the Flag option off the
+// stack sits hidden in .flag-reveal until the cycle drops it in, so it's left
+// alone: a fade-in would show it over the name for the length of the fade.
 const APPEARING_PARTS = [
   '.name',
-  '.flag-stack',
+  '.flag-stack:not(.flag-reveal > *)',
   '.flag:not(.flag-stack > *)',
   '.diff-slot',
   '.rating-badge:not(.slot-ghost *)',

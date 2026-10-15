@@ -429,10 +429,13 @@ body {
 
 /* ---- FACEIT rank cycle ------------------------------------------------- */
 /* After each refresh the name steps name → regional rank → country rank → name
-   (rankCycle.ts sets data-step), with the flag swapping to the region icon for
-   the regional step. The layers share one grid cell, so the slot is always as
-   wide as the widest of them and nothing moves. The leaving text rolls up and
-   out, the next rolls up from below, clipped by .name's overflow. */
+   (rankCycle.ts sets data-step for the text and data-flag for the flag). The
+   region → country step keeps the rank up and ticks its digits over with
+   NumberFlow while the flag rolls to the country one. The layers share one
+   grid cell, so the slot is always as wide as the widest of them and nothing
+   moves. A leaving layer or flag rolls up and out, the next rolls up from
+   below, clipped by .name's overflow. Timings are 2.5x a snappy UI pace, like
+   the rest of the overlay's motion. */
 .flag-stack,
 .name-stack {
   display: inline-grid;
@@ -446,11 +449,48 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
+/* Flag off: the flag only shows with the rank. Coming in, one step at a
+   time (rankCycle.ts): the gap before the text opens so the text slides right
+   (data-gap), the flag drops into it from above (data-flag-in), then the text
+   rolls over to the rank. Going out runs the other way: the rank rolls back
+   to the name, the flag drops down and away, the text slides back left.
+   .rank-ghost and the hidden name set the width; .rank-row (what moves) is
+   left out of it, so the card never resizes. */
+.rank-ghost,
+.rank-row {
+  display: inline-flex;
+  align-items: center;
+}
+.rank-row {
+  justify-self: stretch;
+  contain: inline-size;
+}
+.flag-reveal {
+  display: inline-flex;
+  flex-shrink: 0;
+  /* The flag plus the 10px gap .name puts after it. */
+  width: calc(22px * 4 / 3 + 10px);
+  transition: width 1500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.has-rank-cycle:not([data-gap]) .rank-row .flag-reveal { width: 0; }
+.flag-reveal > .flag-stack {
+  transition:
+    opacity 1500ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 1500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.has-rank-cycle:not([data-flag-in]) .flag-reveal > .flag-stack {
+  opacity: 0;
+  transform: translateY(-0.75em);
+}
+.has-rank-cycle .flag-reveal > .flag-stack.is-leaving {
+  opacity: 0;
+  transform: translateY(0.75em);
+}
 .name-layer,
 .flag-stack > .flag {
   transition:
-    opacity 750ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    opacity 1875ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .name-layer {
   opacity: 0;
@@ -458,27 +498,46 @@ body {
 }
 .name-layer.is-leaving { transform: translateY(-0.75em); }
 .has-rank-cycle[data-step='name'] .layer-name,
-.has-rank-cycle[data-step='region'] .layer-region,
-.has-rank-cycle[data-step='country'] .layer-country {
+.has-rank-cycle:not([data-step='name']) .layer-rank {
   opacity: 1;
   transform: none;
 }
-/* The flags roll with the text: the leaving one goes up and out with its
-   text, the next comes up from below with its own. */
 .flag-stack > .flag {
   opacity: 0;
   transform: translateY(0.75em);
 }
 .flag-stack > .flag.is-leaving { transform: translateY(-0.75em); }
-.has-rank-cycle:not([data-step='region']) .flag-country,
-.has-rank-cycle[data-step='region'] .flag-region {
+.has-rank-cycle:not([data-flag='region']) .flag-country,
+.has-rank-cycle[data-flag='region'] .flag-region {
   opacity: 1;
   transform: none;
 }
-/* A re-render mid-cycle restores the current step without replaying it. */
-.has-rank-cycle.cycle-instant :is(.name-layer, .flag) { transition: none; }
+/* Name ↔ rank: textTicker.ts rolls each character in .name-ticker while the
+   real layers wait hidden underneath. */
+.has-rank-cycle.is-ticking .name-layer { opacity: 0 !important; transition: none; }
+.name-ticker {
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  white-space: pre;
+}
+.tick-col {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+}
+.tick-reel {
+  display: flex;
+  flex-direction: column;
+}
+.tick-reel > span { height: 1em; line-height: 1; }
+/* A re-render mid-cycle restores the current step without replaying it, and
+   an inline flag that comes in with the rank is already the right one. */
+.has-rank-cycle.cycle-instant :is(.name-layer, .flag, .flag-reveal, .flag-stack),
+.has-rank-cycle.flag-instant .flag { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .name-layer,
+  .flag-stack,
   .flag-stack > .flag {
     transform: none !important;
     transition-property: opacity;
