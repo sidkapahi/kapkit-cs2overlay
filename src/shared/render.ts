@@ -203,8 +203,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     // FACEIT rank cycle (rankCycle.ts): after each refresh the flag turns into
     // the region icon while the name shows the regional rank, then the country
     // flag returns as the rank ticks over to the country rank, then the name
-    // comes back. With the flag off, the same flags slide in before the rank
-    // and back out with it. Each step is here only when FACEIT ranks the player
+    // comes back. With the flag off, the text slides right as the rank comes
+    // in and the flag drops into the gap, then both undo on the way out. Each step is here only when FACEIT ranks the player
     // there; with neither, the name renders as before.
     const region = regionFlagUrl(data.region);
     const regionRank = isFaceit && region && data.regionRank != null ? data.regionRank : null;
@@ -230,13 +230,18 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       const rankGhosts = ranks.flatMap((r) => ghosts(formatRating(r).replace(/\d/g, '#')));
       const rankNum = `<span class="rank-num" data-region-rank="${regionRank ?? ''}" data-country-rank="${countryRank ?? ''}">${formatRating(ranks[0])}</span>`;
       const rankSlot = numSlot(rankNum, rankGhosts, 'num-slot rank-slot');
-      // Flag off: the flag slides in before the rank, pushing it right, and
-      // slides back out with it. A hidden copy at full width keeps room for
-      // both, so the card doesn't resize as it slides.
-      const rankLayer = showFlag
-        ? `<span class="name-layer layer-rank">${rankSlot}</span>`
-        : `<span class="rank-ghost slot-ghost" aria-hidden="true"><span class="flag-reveal"></span>${numSlot('', rankGhosts, 'num-slot rank-slot')}</span><span class="name-layer layer-rank"><span class="flag-reveal">${flagStack}</span>${rankSlot}</span>`;
-      nameHtml = `<div class="name has-rank-cycle${showFlag ? '' : ' rank-flags-inline'}" data-step="name">${showFlag ? flagStack : ''}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer}</span></div>`;
+      const layers = `<span class="name-layer layer-name">${name}</span><span class="name-layer layer-rank">${rankSlot}</span>`;
+      if (showFlag) {
+        nameHtml = `<div class="name has-rank-cycle" data-step="name">${flagStack}<span class="name-stack">${reserve}${layers}</span></div>`;
+      } else {
+        // Flag off: as the rank comes in, the text slides right to make room
+        // and the flag drops into the gap; on the way out the flag drops away
+        // and the text slides back. The hidden copies (the name, and the flag
+        // with the rank) set the slot's width, and the moving row doesn't add
+        // to it, so the card stays the same size throughout.
+        const sizer = `<span class="slot-ghost" aria-hidden="true">${name}</span><span class="rank-ghost slot-ghost" aria-hidden="true"><span class="flag-reveal"></span>${numSlot('', rankGhosts, 'num-slot rank-slot')}</span>`;
+        nameHtml = `<div class="name has-rank-cycle rank-flags-inline" data-step="name"><span class="name-stack">${reserve}${sizer}<span class="rank-row"><span class="flag-reveal">${flagStack}</span><span class="name-stack">${layers}</span></span></span></div>`;
+      }
     } else {
       const flag = showFlag
         ? skeleton

@@ -449,27 +449,42 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
-/* Flag off: the flags only show with the rank. Their slot opens from nothing
-   as the rank rolls in, so the flag slides in from the left and pushes the
-   rank right (and the reverse on the way out). .rank-ghost holds the room. */
-.layer-rank,
-.rank-ghost {
+/* Flag off: the flag only shows with the rank. As the rank comes in, its
+   slot opens from nothing so the text slides right, and the flag drops in
+   from above. On the way out the flag drops down and away and the text slides
+   back left. .rank-ghost and the hidden name set the width; .rank-row (what
+   moves) is left out of it, so the card never resizes. */
+.rank-ghost,
+.rank-row {
   display: inline-flex;
   align-items: center;
 }
+.rank-row {
+  justify-self: stretch;
+  contain: inline-size;
+}
 .flag-reveal {
   display: inline-flex;
-  justify-content: flex-end;
   flex-shrink: 0;
-  overflow: hidden;
   /* The flag plus the 10px gap .name puts after it. */
   width: calc(22px * 4 / 3 + 10px);
-  padding-right: 10px;
-  transition: width 1875ms cubic-bezier(0.2, 0.8, 0.2, 1), padding 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: width 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.has-rank-cycle[data-step='name'] .layer-rank .flag-reveal {
-  width: 0;
-  padding-right: 0;
+.has-rank-cycle[data-step='name'] .rank-row .flag-reveal { width: 0; }
+.flag-reveal > .flag-stack {
+  transition:
+    opacity 1875ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Coming in, the flag waits for the gap to open before it drops. */
+.has-rank-cycle:not([data-step='name']) .flag-reveal > .flag-stack { transition-delay: 500ms; }
+.has-rank-cycle[data-step='name'] .flag-reveal > .flag-stack {
+  opacity: 0;
+  transform: translateY(-0.75em);
+}
+.has-rank-cycle .flag-reveal > .flag-stack.is-leaving {
+  opacity: 0;
+  transform: translateY(0.75em);
 }
 .name-layer,
 .flag-stack > .flag {
@@ -499,10 +514,11 @@ body {
 }
 /* A re-render mid-cycle restores the current step without replaying it, and
    an inline flag that comes in with the rank is already the right one. */
-.has-rank-cycle.cycle-instant :is(.name-layer, .flag, .flag-reveal),
+.has-rank-cycle.cycle-instant :is(.name-layer, .flag, .flag-reveal, .flag-stack),
 .has-rank-cycle.flag-instant .flag { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .name-layer,
+  .flag-stack,
   .flag-stack > .flag {
     transform: none !important;
     transition-property: opacity;

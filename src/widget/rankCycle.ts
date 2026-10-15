@@ -82,13 +82,15 @@ export function createRankCycle(container: HTMLElement) {
     const prev = step;
     step = next;
     if (!el || prev === next) return;
-    // With the flag off the flags ride along inside the rank layer, so they
-    // only need to roll between the two rank steps.
+    // With the flag off the flag drops in with the rank and away again with
+    // the name (widget.css), so it only rolls between the two rank steps.
     const inline = el.classList.contains('rank-flags-inline');
     if (next !== 'name') {
       setRank(el, rankFor(el, next)!, prev !== 'name');
       setFlag(el, next, inline && prev === 'name');
-    } else if (!inline) {
+    } else if (inline) {
+      leave([el.querySelector<HTMLElement>('.flag-reveal > .flag-stack')]);
+    } else {
       setFlag(el, 'country', false);
     }
     if ((prev === 'name') !== (next === 'name')) {
