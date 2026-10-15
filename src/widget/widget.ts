@@ -13,7 +13,7 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
-import { createNumberAnimator, INTRO_MS, playIntro } from './animateNumbers';
+import { createNumberAnimator, playIntro } from './animateNumbers';
 import { watchForNewBuild } from './autoReload';
 import { morphCardFrom } from './morphCard';
 import { createRankCycle } from './rankCycle';
@@ -184,14 +184,13 @@ async function init() {
         lastData = await fetchStats();
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
-        const first = !lastHtml;
+        const before = lastHtml;
         render();
-        // Each refresh shows the ranks once; the first load waits for the intro.
-        // With the Flag option off it skips the page load (a reload, or the
-        // auto-reload onto a new build) and only plays on later stats updates
-        // (Sid, 2026-10-15).
-        const flagOff = !!container.querySelector('.rank-flags-inline');
-        if (!(first && flagOff)) rankCycle.play(first ? INTRO_MS : 0);
+        const first = !before;
+        // The rank cycle only plays when a poll brings new stats (the card
+        // changed): not on the page load (a reload, or the auto-reload onto a
+        // new build) and not on polls where nothing moved (Sid, 2026-10-15).
+        if (!first && lastHtml !== before) rankCycle.play();
         return;
       } catch (e) {
         lastError = e;
