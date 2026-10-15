@@ -449,11 +449,27 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
-/* Flag off: the flags only show with the rank, sitting before it. */
-.layer-rank {
+/* Flag off: the flags only show with the rank. Their slot opens from nothing
+   as the rank rolls in, so the flag slides in from the left and pushes the
+   rank right (and the reverse on the way out). .rank-ghost holds the room. */
+.layer-rank,
+.rank-ghost {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+}
+.flag-reveal {
+  display: inline-flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  overflow: hidden;
+  /* The flag plus the 10px gap .name puts after it. */
+  width: calc(22px * 4 / 3 + 10px);
+  padding-right: 10px;
+  transition: width 1875ms cubic-bezier(0.2, 0.8, 0.2, 1), padding 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.has-rank-cycle[data-step='name'] .layer-rank .flag-reveal {
+  width: 0;
+  padding-right: 0;
 }
 .name-layer,
 .flag-stack > .flag {
@@ -483,7 +499,7 @@ body {
 }
 /* A re-render mid-cycle restores the current step without replaying it, and
    an inline flag that comes in with the rank is already the right one. */
-.has-rank-cycle.cycle-instant :is(.name-layer, .flag),
+.has-rank-cycle.cycle-instant :is(.name-layer, .flag, .flag-reveal),
 .has-rank-cycle.flag-instant .flag { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .name-layer,

@@ -203,8 +203,8 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     // FACEIT rank cycle (rankCycle.ts): after each refresh the flag turns into
     // the region icon while the name shows the regional rank, then the country
     // flag returns as the rank ticks over to the country rank, then the name
-    // comes back. With the flag off, the same flags sit before the rank and
-    // come and go with it. Each step is here only when FACEIT ranks the player
+    // comes back. With the flag off, the same flags slide in before the rank
+    // and back out with it. Each step is here only when FACEIT ranks the player
     // there; with neither, the name renders as before.
     const region = regionFlagUrl(data.region);
     const regionRank = isFaceit && region && data.regionRank != null ? data.regionRank : null;
@@ -229,7 +229,13 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       const ranks = [regionRank, countryRank].filter((r): r is number => r != null);
       const rankGhosts = ranks.flatMap((r) => ghosts(formatRating(r).replace(/\d/g, '#')));
       const rankNum = `<span class="rank-num" data-region-rank="${regionRank ?? ''}" data-country-rank="${countryRank ?? ''}">${formatRating(ranks[0])}</span>`;
-      const rankLayer = `<span class="name-layer layer-rank">${showFlag ? '' : flagStack}${numSlot(rankNum, rankGhosts, 'num-slot rank-slot')}</span>`;
+      const rankSlot = numSlot(rankNum, rankGhosts, 'num-slot rank-slot');
+      // Flag off: the flag slides in before the rank, pushing it right, and
+      // slides back out with it. A hidden copy at full width keeps room for
+      // both, so the card doesn't resize as it slides.
+      const rankLayer = showFlag
+        ? `<span class="name-layer layer-rank">${rankSlot}</span>`
+        : `<span class="rank-ghost slot-ghost" aria-hidden="true"><span class="flag-reveal"></span>${numSlot('', rankGhosts, 'num-slot rank-slot')}</span><span class="name-layer layer-rank"><span class="flag-reveal">${flagStack}</span>${rankSlot}</span>`;
       nameHtml = `<div class="name has-rank-cycle${showFlag ? '' : ' rank-flags-inline'}" data-step="name">${showFlag ? flagStack : ''}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer}</span></div>`;
     } else {
       const flag = showFlag
