@@ -202,17 +202,20 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     const showFlag = isFaceit && config.showFlag && !!country;
     // FACEIT rank cycle (rankCycle.ts): after each refresh the flag turns into
     // the region icon while the name shows the regional rank, then the country
-    // flag returns with the country rank, then the name comes back. Each step
-    // is here only when FACEIT ranks the player there; with neither, the name
-    // renders as before.
+    // flag returns with the country rank, then the name comes back. With the
+    // flag off, a short region / country code (NA, CA) sits before each rank
+    // instead. Each step is here only when FACEIT ranks the player there; with
+    // neither, the name renders as before.
     const region = regionFlagUrl(data.region);
-    const regionRank = showFlag && region && data.regionRank != null ? formatRating(data.regionRank) : '';
-    const countryRank = showFlag && data.countryRank != null ? formatRating(data.countryRank) : '';
+    const regionRank = isFaceit && region && data.regionRank != null ? formatRating(data.regionRank) : '';
+    const countryRank = isFaceit && country && data.countryRank != null ? formatRating(data.countryRank) : '';
     // The skeleton puts the name in its own span so its bar hugs the text, not
     // the flag beside it.
     const name = skeleton ? `<span class="name-text">${esc(data.name)}</span>` : esc(data.name);
     if (regionRank || countryRank) {
-      const flags = skeleton
+      const flags = !showFlag
+        ? ''
+        : skeleton
         ? '<span class="flag"></span>'
         : `<span class="flag-stack"><img class="flag flag-country" src="${country}" alt="">${
             regionRank ? `<img class="flag flag-region" src="${region}" alt="">` : ''
@@ -225,14 +228,15 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
       // six-digit rank like 222,222 in the widest digits), so a short name
       // never makes the card grow or shrink when a rank rolls in.
       const reserve = numSlot('', RANK_RESERVE_GHOSTS, 'num-slot rank-slot slot-ghost');
-      const rankLayer = (cls: string, text: string) =>
+      const rankLayer = (cls: string, text: string, code: string) =>
         text
-          ? `<span class="name-layer ${cls}">${numSlot(`<span>${text}</span>`, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
+          ? `<span class="name-layer ${cls}">${showFlag ? '' : `<span class="rank-code">${esc(code.toUpperCase())}</span>`}${numSlot(`<span>${text}</span>`, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
           : '';
       nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer(
         'layer-region',
         regionRank,
-      )}${rankLayer('layer-country', countryRank)}</span></div>`;
+        data.region ?? '',
+      )}${rankLayer('layer-country', countryRank, data.country ?? '')}</span></div>`;
     } else {
       const flag = showFlag
         ? skeleton
