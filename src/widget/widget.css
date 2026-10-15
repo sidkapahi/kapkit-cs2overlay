@@ -429,10 +429,13 @@ body {
 
 /* ---- FACEIT rank cycle ------------------------------------------------- */
 /* After each refresh the name steps name → regional rank → country rank → name
-   (rankCycle.ts sets data-step), with the flag swapping to the region icon for
-   the regional step. The layers share one grid cell, so the slot is always as
-   wide as the widest of them and nothing moves. The leaving text rolls up and
-   out, the next rolls up from below, clipped by .name's overflow. */
+   (rankCycle.ts sets data-step for the text and data-flag for the flag). The
+   region → country step keeps the rank up and ticks its digits over with
+   NumberFlow while the flag rolls to the country one. The layers share one
+   grid cell, so the slot is always as wide as the widest of them and nothing
+   moves. A leaving layer or flag rolls up and out, the next rolls up from
+   below, clipped by .name's overflow. Timings are 2.5x a snappy UI pace, like
+   the rest of the overlay's motion. */
 .flag-stack,
 .name-stack {
   display: inline-grid;
@@ -446,21 +449,17 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
-/* Flag off: the region / country code before each rank (NA 222,222). */
-.name-layer:has(.rank-code) {
+/* Flag off: the flags only show with the rank, sitting before it. */
+.layer-rank {
   display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.rank-code {
-  color: #8d8d8d;
-  letter-spacing: 0.04em;
+  align-items: center;
+  gap: 10px;
 }
 .name-layer,
 .flag-stack > .flag {
   transition:
-    opacity 750ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    opacity 1875ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 1875ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .name-layer {
   opacity: 0;
@@ -468,25 +467,24 @@ body {
 }
 .name-layer.is-leaving { transform: translateY(-0.75em); }
 .has-rank-cycle[data-step='name'] .layer-name,
-.has-rank-cycle[data-step='region'] .layer-region,
-.has-rank-cycle[data-step='country'] .layer-country {
+.has-rank-cycle:not([data-step='name']) .layer-rank {
   opacity: 1;
   transform: none;
 }
-/* The flags roll with the text: the leaving one goes up and out with its
-   text, the next comes up from below with its own. */
 .flag-stack > .flag {
   opacity: 0;
   transform: translateY(0.75em);
 }
 .flag-stack > .flag.is-leaving { transform: translateY(-0.75em); }
-.has-rank-cycle:not([data-step='region']) .flag-country,
-.has-rank-cycle[data-step='region'] .flag-region {
+.has-rank-cycle:not([data-flag='region']) .flag-country,
+.has-rank-cycle[data-flag='region'] .flag-region {
   opacity: 1;
   transform: none;
 }
-/* A re-render mid-cycle restores the current step without replaying it. */
-.has-rank-cycle.cycle-instant :is(.name-layer, .flag) { transition: none; }
+/* A re-render mid-cycle restores the current step without replaying it, and
+   an inline flag that comes in with the rank is already the right one. */
+.has-rank-cycle.cycle-instant :is(.name-layer, .flag),
+.has-rank-cycle.flag-instant .flag { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   .name-layer,
   .flag-stack > .flag {

@@ -16,8 +16,8 @@ const NUMBER_FORMATS: Record<string, Format> = {
 
 // NumberFlow's digit roll and fade, 2.5x its defaults (900ms / 450ms) to match
 // the pace of the other animations, on its own easing curves.
-const ROLL_TIMING = { ...NumberFlow.defaultProps.transformTiming, duration: 2250 };
-const FADE_TIMING = { ...NumberFlow.defaultProps.opacityTiming, duration: 1125 };
+export const ROLL_TIMING = { ...NumberFlow.defaultProps.transformTiming, duration: 2250 };
+export const FADE_TIMING = { ...NumberFlow.defaultProps.opacityTiming, duration: 1125 };
 
 // How long the first-load entrance (.intro in widget.css) runs, with headroom
 // for the longest delay + duration there.

@@ -202,41 +202,35 @@ export function renderWidget(config: WidgetConfig, data: PremierData, skeleton =
     const showFlag = isFaceit && config.showFlag && !!country;
     // FACEIT rank cycle (rankCycle.ts): after each refresh the flag turns into
     // the region icon while the name shows the regional rank, then the country
-    // flag returns with the country rank, then the name comes back. With the
-    // flag off, a short region / country code (NA, CA) sits before each rank
-    // instead. Each step is here only when FACEIT ranks the player there; with
-    // neither, the name renders as before.
+    // flag returns as the rank ticks over to the country rank, then the name
+    // comes back. With the flag off, the same flags sit before the rank and
+    // come and go with it. Each step is here only when FACEIT ranks the player
+    // there; with neither, the name renders as before.
     const region = regionFlagUrl(data.region);
-    const regionRank = isFaceit && region && data.regionRank != null ? formatRating(data.regionRank) : '';
-    const countryRank = isFaceit && country && data.countryRank != null ? formatRating(data.countryRank) : '';
+    const regionRank = isFaceit && region && data.regionRank != null ? data.regionRank : null;
+    const countryRank = isFaceit && country && data.countryRank != null ? data.countryRank : null;
     // The skeleton puts the name in its own span so its bar hugs the text, not
     // the flag beside it.
     const name = skeleton ? `<span class="name-text">${esc(data.name)}</span>` : esc(data.name);
-    if (regionRank || countryRank) {
-      const flags = !showFlag
-        ? ''
-        : skeleton
+    if (regionRank != null || countryRank != null) {
+      const flagStack = skeleton
         ? '<span class="flag"></span>'
         : `<span class="flag-stack"><img class="flag flag-country" src="${country}" alt="">${
-            regionRank ? `<img class="flag flag-region" src="${region}" alt="">` : ''
+            regionRank != null ? `<img class="flag flag-region" src="${region}" alt="">` : ''
           }</span>`;
       // Every layer shares one grid cell, so the name slot is as wide as the
-      // widest of the name and both ranks, and nothing moves as it cycles. A
-      // rank is sized for the widest digit (like numSlot), so a rank change
-      // that keeps its digit count can't resize the card either.
+      // widest of the name and the rank, and nothing moves as it cycles. The
+      // rank is sized for the widest digit in both its values (like numSlot),
+      // so it can tick from one to the other without resizing the card.
       // Sid's call: the slot always has room for at least 7 characters (a
       // six-digit rank like 222,222 in the widest digits), so a short name
-      // never makes the card grow or shrink when a rank rolls in.
+      // never makes the card grow or shrink when the rank rolls in.
       const reserve = numSlot('', RANK_RESERVE_GHOSTS, 'num-slot rank-slot slot-ghost');
-      const rankLayer = (cls: string, text: string, code: string) =>
-        text
-          ? `<span class="name-layer ${cls}">${showFlag ? '' : `<span class="rank-code">${esc(code.toUpperCase())}</span>`}${numSlot(`<span>${text}</span>`, ghosts(text.replace(/\d/g, '#')), 'num-slot rank-slot')}</span>`
-          : '';
-      nameHtml = `<div class="name has-rank-cycle" data-step="name">${flags}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer(
-        'layer-region',
-        regionRank,
-        data.region ?? '',
-      )}${rankLayer('layer-country', countryRank, data.country ?? '')}</span></div>`;
+      const ranks = [regionRank, countryRank].filter((r): r is number => r != null);
+      const rankGhosts = ranks.flatMap((r) => ghosts(formatRating(r).replace(/\d/g, '#')));
+      const rankNum = `<span class="rank-num" data-region-rank="${regionRank ?? ''}" data-country-rank="${countryRank ?? ''}">${formatRating(ranks[0])}</span>`;
+      const rankLayer = `<span class="name-layer layer-rank">${showFlag ? '' : flagStack}${numSlot(rankNum, rankGhosts, 'num-slot rank-slot')}</span>`;
+      nameHtml = `<div class="name has-rank-cycle${showFlag ? '' : ' rank-flags-inline'}" data-step="name">${showFlag ? flagStack : ''}<span class="name-stack">${reserve}<span class="name-layer layer-name">${name}</span>${rankLayer}</span></div>`;
     } else {
       const flag = showFlag
         ? skeleton
