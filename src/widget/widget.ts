@@ -187,7 +187,11 @@ async function init() {
         const first = !lastHtml;
         render();
         // Each refresh shows the ranks once; the first load waits for the intro.
-        rankCycle.play(first ? INTRO_MS : 0);
+        // With the Flag option off it skips the page load (a reload, or the
+        // auto-reload onto a new build) and only plays on later stats updates
+        // (Sid, 2026-10-15).
+        const flagOff = !!container.querySelector('.rank-flags-inline');
+        if (!(first && flagOff)) rankCycle.play(first ? INTRO_MS : 0);
         return;
       } catch (e) {
         lastError = e;
