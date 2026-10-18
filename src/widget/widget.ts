@@ -33,6 +33,12 @@ const LIVE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// The player's own stats from a poll, minus the leaderboard positions (regional,
+// country and Challenger rank), which move as other players play.
+function statsKey(data: PremierData): string {
+  return JSON.stringify({ ...data, regionRank: 0, countryRank: 0, leaderboardPosition: 0 });
+}
+
 // An element's box on the page ignoring any transform on it (centred origin).
 function layoutRect(el: HTMLElement): DOMRect {
   const r = el.getBoundingClientRect();
@@ -103,6 +109,8 @@ async function init() {
   const animateNumbers = createNumberAnimator();
   // FACEIT: steps the name through the regional and country ranks.
   const rankCycle = createRankCycle(container);
+  // The stats the last poll brought (see statsKey); empty until the first one.
+  let lastStatsKey = '';
 
   // Renders whatever we currently know. In session mode it advances the session
   // from the newest live status + matches, then overrides the W/L pills with the
@@ -184,13 +192,15 @@ async function init() {
         lastData = await fetchStats();
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
-        const before = lastHtml;
         render();
-        const first = !before;
-        // The rank cycle only plays when a poll brings new stats (the card
-        // changed): not on the page load (a reload, or the auto-reload onto a
-        // new build) and not on polls where nothing moved (Sid, 2026-10-15).
-        if (!first && lastHtml !== before) rankCycle.play();
+        // The rank cycle only plays when a poll brings new stats of the
+        // player's own: not on the page load (a reload, or the auto-reload onto
+        // a new build) and not on polls where nothing moved (Sid, 2026-10-15).
+        // The leaderboard positions are left out: they drift by a place or two
+        // as other players play, which would replay the cycle every poll.
+        const key = statsKey(lastData);
+        if (lastStatsKey && key !== lastStatsKey) rankCycle.play();
+        lastStatsKey = key;
         return;
       } catch (e) {
         lastError = e;
