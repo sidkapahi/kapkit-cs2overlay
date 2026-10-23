@@ -16,6 +16,10 @@ const CARD_SCALE = 0.6;
 const spring = (extra: { damping?: number } = {}) =>
   createSpring({ mass: 1, stiffness: 320, damping: 14, ...extra });
 const MAX_TILT = 8;
+// Inertia: the card is pulled toward the cursor by a spring rather than
+// pinned to it, so it trails a fast move and settles with a small overshoot.
+const FOLLOW_STIFFNESS = 300;
+const FOLLOW_DAMPING = 22;
 
 // A 1x1 transparent GIF, so the browser draws no drag image of its own. It
 // has to be loaded before the drag starts.
@@ -46,14 +50,42 @@ export function initDragCard(field: HTMLElement) {
   };
 
   let hold = { x: 0, y: 0 };
+  // The card's top-left (pos), its velocity, and where the cursor wants it.
   let pos = { x: 0, y: 0 };
-  let last: { x: number; t: number } | null = null;
+  let vel = { x: 0, y: 0 };
+  let target = { x: 0, y: 0 };
+  let frame = 0;
+  let lastFrame = 0;
   let marching: JSAnimation | null = null;
   let outside = false;
 
-  const place = (x: number, y: number) => {
-    pos = { x: x - hold.x, y: y - hold.y };
-    follower.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+  const draw = () => {
+    // Lean into the horizontal movement.
+    const tilt = utils.clamp(vel.x * 0.012, -MAX_TILT, MAX_TILT);
+    follower.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(${tilt}deg)`;
+  };
+  const step = (now: number) => {
+    const dt = Math.min(0.032, (now - lastFrame) / 1000);
+    lastFrame = now;
+    for (const axis of ["x", "y"] as const) {
+      const accel = FOLLOW_STIFFNESS * (target[axis] - pos[axis]) - FOLLOW_DAMPING * vel[axis];
+      vel[axis] += accel * dt;
+      pos[axis] += vel[axis] * dt;
+    }
+    draw();
+    frame = requestAnimationFrame(step);
+  };
+  const aim = (x: number, y: number) => {
+    target = { x: x - hold.x, y: y - hold.y };
+    if (reducedMotion()) {
+      pos = { ...target };
+      draw();
+    }
+  };
+  const stopFollowing = () => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    vel = { x: 0, y: 0 };
   };
 
   // Press: the field squishes a little and springs back.
@@ -83,14 +115,19 @@ export function initDragCard(field: HTMLElement) {
       if (card) zoom.prepend(dottedOutline(card.offsetWidth, card.offsetHeight));
       const rect = lift.getBoundingClientRect();
       hold = { x: rect.width / 2, y: rect.height / 2 };
-      place(e.clientX, e.clientY);
-      last = { x: e.clientX, t: performance.now() };
+      aim(e.clientX, e.clientY);
+      pos = { ...target };
+      vel = { x: 0, y: 0 };
+      draw();
       outside = false;
       field.classList.add("is-dragging");
 
       const reduced = reducedMotion();
       utils.set(lift, { scale: reduced ? 1 : 0.35, rotate: reduced ? 0 : -8, opacity: 1 });
       if (reduced) return;
+      lastFrame = performance.now();
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(step);
       animate(lift, { scale: 1, rotate: -2, ease: spring() });
       const rect2 = zoom.querySelector("rect");
       if (rect2) {
@@ -128,25 +165,15 @@ export function initDragCard(field: HTMLElement) {
     return svg;
   }
 
-  // Follow the cursor, and tilt toward the movement, while over the page.
+  // Follow the cursor (with inertia) while over the page.
   function onDragOver(e: DragEvent) {
     if (follower.hidden) return;
-    place(e.clientX, e.clientY);
-    const reduced = reducedMotion();
+    aim(e.clientX, e.clientY);
     if (outside) {
       outside = false;
-      if (!reduced) animate(lift, { scale: 1, opacity: 1, ease: spring() });
+      if (!reducedMotion()) animate(lift, { scale: 1, opacity: 1, ease: spring() });
       else utils.set(lift, { opacity: 1 });
     }
-    if (reduced || !last) return;
-    const now = performance.now();
-    const vx = (e.clientX - last.x) / Math.max(16, now - last.t);
-    last = { x: e.clientX, t: now };
-    animate(lift, {
-      rotate: utils.clamp(vx * 5, -MAX_TILT, MAX_TILT),
-      ease: spring({ damping: 12 }),
-      duration: 500,
-    });
   }
   // Heading out of the window (towards OBS): shrink away.
   function onDragLeave(e: DragEvent) {
@@ -155,6 +182,7 @@ export function initDragCard(field: HTMLElement) {
     animate(lift, { scale: 0.4, opacity: 0, duration: 220, ease: "in(2)" });
   }
   function finish() {
+    stopFollowing();
     marching?.pause();
     marching = null;
     follower.hidden = true;
@@ -169,6 +197,7 @@ export function initDragCard(field: HTMLElement) {
       return;
     }
     // Cancelled: spring back home into the field and vanish.
+    stopFollowing();
     const fr = field.getBoundingClientRect();
     const from = { ...pos };
     animate(from, {
