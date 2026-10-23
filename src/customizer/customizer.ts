@@ -1327,7 +1327,7 @@ function bindControls() {
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
     const slot = slots[currentConfig.provider];
-    if (slot?.status === "ok") dragCard.start(e, renderWidget(currentConfig, slot.data));
+    if (slot?.status === "ok") dragCard.start(e, renderWidget(currentConfig, previewData(slot.data)));
     trackEvent("widget_url_dragged", configEventProps(currentConfig));
   });
   // Web fonts change the card's size once they arrive.
