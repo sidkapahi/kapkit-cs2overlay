@@ -216,7 +216,7 @@ function updateObsDragLink() {
   if (!field) return;
   const size = measureOverlaySize();
   field.classList.toggle("is-disabled", !size);
-  field.draggable = !!size;
+  field.draggable = !!size && !copyPressed;
   setObsSizeReadout(field, size);
   syncObsField();
 }
@@ -237,6 +237,37 @@ function setObsSizeReadout(
   const [w, h] = sizeEl.querySelectorAll<NumberFlow>("number-flow");
   w.update(size.width);
   h.update(size.height);
+}
+
+// True while the copy button is held down. The button sits inside the
+// draggable field, so a few pixels of wobble during the click would start
+// dragging the field (and swallow the click); the field stops being draggable
+// for the length of the press.
+let copyPressed = false;
+
+// Copies text, falling back to a hidden textarea and execCommand where the
+// async Clipboard API is missing or refuses (non-secure pages, embedded
+// browsers, a document that has lost focus). Resolves to whether it worked.
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.append(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
 }
 
 // Which view the OBS field shows (see .obs-field in customizer.css): the drag
@@ -1165,9 +1196,28 @@ function bindControls() {
   const dragLink = document.getElementById("obs-drag")!;
   let copiedTimer = 0;
   const copyBtn = document.getElementById("copy-url")!;
-  copyBtn.addEventListener("click", () => {
+  copyBtn.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    copyPressed = true;
+    dragLink.draggable = false;
+    dragLink.classList.add("copy-pressed");
+  });
+  const endCopyPress = () => {
+    if (!copyPressed) return;
+    // After this press's click has fired.
+    setTimeout(() => {
+      copyPressed = false;
+      dragLink.classList.remove("copy-pressed");
+      updateObsDragLink();
+    });
+  };
+  window.addEventListener("pointerup", endCopyPress);
+  window.addEventListener("pointercancel", endCopyPress);
+  // A plain click anywhere on the field (icon or not) copies the link; pressing
+  // and moving drags it into OBS instead.
+  const copyLink = async () => {
     if (!currentConfig.steamId) return;
-    navigator.clipboard.writeText(getWidgetUrl());
+    if (!(await copyText(getWidgetUrl()))) return;
     trackEvent("widget_url_copied", configEventProps(currentConfig));
     // Swap the icon to a check mark and "COPY LINK" to "LINK COPIED" for a
     // short beat.
@@ -1178,7 +1228,13 @@ function bindControls() {
       obsCopied = false;
       syncObsField();
     }, 1500);
+  };
+  copyBtn.addEventListener("click", (e) => {
+    // Handled here so the field's own click doesn't copy a second time.
+    e.stopPropagation();
+    void copyLink();
   });
+  dragLink.addEventListener("click", () => void copyLink());
   const setShowLink = (on: boolean) => {
     obsShowLink = on;
     syncObsField();
@@ -1201,14 +1257,6 @@ function bindControls() {
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
     trackEvent("widget_url_dragged", configEventProps(currentConfig));
-  });
-  // A click on the field (not the copy button) does nothing; nudge toward
-  // dragging instead.
-  dragLink.addEventListener("click", (e) => {
-    if ((e.target as HTMLElement).closest("#copy-url")) return;
-    dragLink.classList.remove("nudge");
-    void dragLink.offsetWidth;
-    dragLink.classList.add("nudge");
   });
   // Web fonts change the card's size once they arrive.
   document.fonts?.addEventListener?.("loadingdone", updateObsDragLink);
@@ -1618,7 +1666,7 @@ function init() {
         <div class="exportbar is-empty" id="exportbar">
           <div class="export-obs">
             <span class="field-label">OBS Studio (Drag and drop onto OBS scene or copy browser source link)</span>
-            <div id="obs-drag" class="obs-field is-disabled" data-mode="drag" draggable="false" title="Drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
+            <div id="obs-drag" class="obs-field is-disabled" data-mode="drag" draggable="false" title="Click to copy the browser source link, or drag onto your OBS scene to add the overlay at exactly this size. The size is set when you drop it, so drag it in again after changing what's shown.">
               <span class="obs-grip">${ICON_GRIP}</span>
               <span class="obs-main"><span class="obs-drag-label">DRAG INTO OBS</span><span class="obs-url" id="generated-url"></span></span>
               <span class="obs-side"><span class="obs-drag-size" hidden><number-flow class="obs-size-num"></number-flow> x <number-flow class="obs-size-num"></number-flow></span><span class="obs-size-measure" aria-hidden="true"></span><span class="obs-copy-label">COPY LINK</span><span class="obs-copied-label">LINK COPIED</span></span>
