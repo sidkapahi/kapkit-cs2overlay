@@ -16,10 +16,13 @@ const CARD_SCALE = 0.6;
 const spring = (extra: { damping?: number } = {}) =>
   createSpring({ mass: 1, stiffness: 320, damping: 14, ...extra });
 const MAX_TILT = 8;
-// Inertia: the card is pulled toward the cursor by a spring rather than
-// pinned to it, so it trails a fast move and settles with a small overshoot.
-const FOLLOW_STIFFNESS = 75;
-const FOLLOW_DAMPING = 11;
+// Inertia: the card is pulled toward the cursor by a stiff spring, so it
+// catches up quickly with a small overshoot. The tilt rides a slower, looser
+// spring of its own, so it swings and settles after the card has arrived.
+const FOLLOW_STIFFNESS = 700;
+const FOLLOW_DAMPING = 34;
+const TILT_STIFFNESS = 75;
+const TILT_DAMPING = 8;
 
 // A 1x1 transparent GIF, so the browser draws no drag image of its own. It
 // has to be loaded before the drag starts.
@@ -54,14 +57,14 @@ export function initDragCard(field: HTMLElement) {
   let pos = { x: 0, y: 0 };
   let vel = { x: 0, y: 0 };
   let target = { x: 0, y: 0 };
+  let tilt = 0;
+  let tiltVel = 0;
   let frame = 0;
   let lastFrame = 0;
   let marching: JSAnimation | null = null;
   let outside = false;
 
   const draw = () => {
-    // Lean into the horizontal movement.
-    const tilt = utils.clamp(vel.x * 0.012, -MAX_TILT, MAX_TILT);
     follower.style.transform = `translate(${pos.x}px, ${pos.y}px) rotate(${tilt}deg)`;
   };
   const step = (now: number) => {
@@ -72,6 +75,10 @@ export function initDragCard(field: HTMLElement) {
       vel[axis] += accel * dt;
       pos[axis] += vel[axis] * dt;
     }
+    // Lean into the horizontal movement.
+    const tiltTarget = utils.clamp(vel.x * 0.012, -MAX_TILT, MAX_TILT);
+    tiltVel += (TILT_STIFFNESS * (tiltTarget - tilt) - TILT_DAMPING * tiltVel) * dt;
+    tilt += tiltVel * dt;
     draw();
     frame = requestAnimationFrame(step);
   };
@@ -86,6 +93,8 @@ export function initDragCard(field: HTMLElement) {
     cancelAnimationFrame(frame);
     frame = 0;
     vel = { x: 0, y: 0 };
+    tilt = 0;
+    tiltVel = 0;
   };
 
   // Press: the field squishes a little and springs back.
