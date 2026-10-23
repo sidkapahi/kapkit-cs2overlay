@@ -1041,7 +1041,209 @@ select.field-input option {
 }
 
 .exportbar.is-empty .export-obs,
-.exportbar.is-empty /* While dragged, the field stays behind as a dashed outline (dragCard.ts). */
+.exportbar.is-empty .export-zip {
+  opacity: 0.24;
+  pointer-events: none;
+}
+
+.exportbar .field-label {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-obs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* One field for both hand-offs: drag it onto the OBS canvas to create a
+   Browser Source already sized to the overlay (layer-width / layer-height),
+   or copy the plain link with the button at its end. Hovering the copy button
+   swaps the field to show the link it will copy (Figma 247:2). */
+.obs-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-field);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: normal;
+  white-space: nowrap;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+}
+
+.obs-field:active:not(.is-disabled) {
+  cursor: grabbing;
+}
+
+.obs-field.is-disabled {
+  cursor: default;
+  -webkit-user-drag: none;
+}
+
+/* The copy button is being pressed: a click, not a drag (see copyPressed). */
+.obs-field.copy-pressed {
+  cursor: default;
+  -webkit-user-drag: none;
+}
+
+.obs-grip {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--icon-muted);
+}
+
+.obs-grip svg,
+.obs-field .icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The field's text swaps between three views (data-mode, set in
+   syncObsField): "drag" (DRAG INTO OBS + size), "link" (the URL + COPY LINK,
+   while the copy button is hovered) and "copied" (the URL + LINK COPIED).
+   Each view's labels share one grid cell and crossfade; the right-hand slot's
+   width is set from the incoming label so it eases between sizes. */
+.obs-main,
+.obs-side {
+  display: grid;
+  align-items: center;
+}
+
+.obs-main {
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.obs-side {
+  flex-shrink: 0;
+  justify-items: end;
+  overflow: hidden;
+  font-weight: 500;
+  color: var(--icon-muted);
+  transition: width var(--obs-swap-ms) var(--ease-out);
+}
+
+.obs-main > *,
+.obs-side > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transform: translateY(0.45em);
+  transition:
+    opacity var(--obs-swap-ms) var(--ease-out),
+    transform var(--obs-swap-ms) var(--ease-out);
+}
+
+.obs-drag-size {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Plain-text copy of the size readout, measured for the slot width only. */
+.obs-side > .obs-size-measure {
+  position: absolute;
+  visibility: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.obs-field[data-mode="drag"] .obs-drag-label,
+.obs-field[data-mode="drag"] .obs-drag-size,
+.obs-field[data-mode="link"] .obs-url,
+.obs-field[data-mode="link"] .obs-copy-label,
+.obs-field[data-mode="copied"] .obs-url,
+.obs-field[data-mode="copied"] .obs-copied-label {
+  opacity: 1;
+  transform: none;
+}
+
+.obs-copied-label {
+  display: inline;
+}
+
+.obs-copied-label {
+  color: #6fce72;
+}
+
+.obs-field .icon-btn {
+  width: 20px;
+  height: 20px;
+  color: var(--text);
+}
+
+.icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--icon-muted);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.icon-btn:hover {
+  color: #f0f0f0;
+}
+
+/* The copy and check icons are stacked so one can crossfade into the other. */
+.icon-copy,
+.icon-check {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.icon-btn svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.icon-copy {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.icon-check {
+  opacity: 0;
+  transform: scale(0.5);
+  color: #6fce72;
+}
+
+.obs-field.copied .icon-copy {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.obs-field.copied .icon-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* While dragged, the field stays behind as a dashed outline (dragCard.ts). */
 .obs-field.is-dragging {
   border-style: dashed;
 }
@@ -1086,421 +1288,6 @@ select.field-input option {
   fill: none;
   stroke: #f0f0f0;
   stroke-linecap: round;
-}
-
-.export-zip {
-  opacity: 0.24;
-  pointer-events: none;
-}
-
-.exportbar .field-label {
-  font-family: var(--font-ui);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.export-obs {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* One field for both hand-offs: drag it onto the OBS canvas to create a
-   Browser Source already sized to the overlay (layer-width / layer-height),
-   or copy the plain link with the button at its end. Hovering the copy button
-   swaps the field to show the link it will copy (Figma 247:2). */
-.obs-field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding: 12px 16px;
-  background: var(--input-bg);
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-field);
-  font-family: var(--font-ui);
-  font-size: 16px;
-  line-height: normal;
-  white-space: nowrap;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-drag: element;
-}
-
-.obs-field:active:not(.is-disabled) {
-  cursor: grabbing;
-}
-
-.obs-field.is-disabled {
-  cursor: default;
-  -webkit-user-drag: none;
-}
-
-/* The copy button is being pressed: a click, not a drag (see copyPressed). */
-.obs-field.copy-pressed {
-  cursor: default;
-  -webkit-user-drag: none;
-}
-
-.obs-grip {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--icon-muted);
-}
-
-.obs-grip svg,
-.obs-field .icon-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* The field's text swaps between three views (data-mode, set in
-   syncObsField): "drag" (DRAG INTO OBS + size), "link" (the URL + COPY LINK,
-   while the copy button is hovered) and "copied" (the URL + LINK COPIED).
-   Each view's labels share one grid cell and crossfade; the right-hand slot's
-   width is set from the incoming label so it eases between sizes. */
-.obs-main,
-.obs-side {
-  display: grid;
-  align-items: center;
-}
-
-.obs-main {
-  flex: 1;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  font-weight: 700;
-  color: var(--text);
-}
-
-.obs-side {
-  flex-shrink: 0;
-  justify-items: end;
-  overflow: hidden;
-  font-weight: 500;
-  color: var(--icon-muted);
-  transition: width var(--obs-swap-ms) var(--ease-out);
-}
-
-.obs-main > *,
-.obs-side > * {
-  grid-area: 1 / 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0;
-  transform: translateY(0.45em);
-  transition:
-    opacity var(--obs-swap-ms) var(--ease-out),
-    transform var(--obs-swap-ms) var(--ease-out);
-}
-
-.obs-drag-size {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Plain-text copy of the size readout, measured for the slot width only. */
-.obs-side > .obs-size-measure {
-  position: absolute;
-  visibility: hidden;
-  font-variant-numeric: tabular-nums;
-}
-
-.obs-field[data-mode="drag"] .obs-drag-label,
-.obs-field[data-mode="drag"] .obs-drag-size,
-.obs-field[data-mode="link"] .obs-url,
-.obs-field[data-mode="link"] .obs-copy-label,
-.obs-field[data-mode="copied"] .obs-url,
-.obs-field[data-mode="copied"] .obs-copied-label {
-  opacity: 1;
-  transform: none;
-}
-
-.obs-copied-label {
-  display: inline;
-}
-
-.obs-copied-label {
-  color: #6fce72;
-}
-
-.obs-field .icon-btn {
-  width: 20px;
-  height: 20px;
-  color: var(--text);
-}
-
-.icon-btn {
-  position: relative;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--icon-muted);
-  cursor: pointer;
-  transition: color 0.12s;
-}
-
-.icon-btn:hover {
-  color: #f0f0f0;
-}
-
-/* The copy and check icons are stacked so one can crossfade into the other. */
-.icon-copy,
-.icon-check {
-  position: absolute;
-  inset: 0;
-  display: block;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.icon-btn svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.icon-copy {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.icon-check {
-  opacity: 0;
-  transform: scale(0.5);
-  color: #6fce72;
-}
-
-.obs-field.copied .icon-copy {
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-.obs-field.copied .icon-check {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.export-zip {
-  opacity: 0.24;
-  pointer-events: none;
-}
-
-.exportbar .field-label {
-  font-family: var(--font-ui);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.export-obs {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* One field for both hand-offs: drag it onto the OBS canvas to create a
-   Browser Source already sized to the overlay (layer-width / layer-height),
-   or copy the plain link with the button at its end. Hovering the copy button
-   swaps the field to show the link it will copy (Figma 247:2). */
-.obs-field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding: 12px 16px;
-  background: var(--input-bg);
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-field);
-  font-family: var(--font-ui);
-  font-size: 16px;
-  line-height: normal;
-  white-space: nowrap;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-drag: element;
-}
-
-.obs-field:active:not(.is-disabled) {
-  cursor: grabbing;
-}
-
-.obs-field.is-disabled {
-  cursor: default;
-  -webkit-user-drag: none;
-}
-
-/* The copy button is being pressed: a click, not a drag (see copyPressed). */
-.obs-field.copy-pressed {
-  cursor: default;
-  -webkit-user-drag: none;
-}
-
-.obs-grip {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--icon-muted);
-}
-
-.obs-grip svg,
-.obs-field .icon-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* The field's text swaps between three views (data-mode, set in
-   syncObsField): "drag" (DRAG INTO OBS + size), "link" (the URL + COPY LINK,
-   while the copy button is hovered) and "copied" (the URL + LINK COPIED).
-   Each view's labels share one grid cell and crossfade; the right-hand slot's
-   width is set from the incoming label so it eases between sizes. */
-.obs-main,
-.obs-side {
-  display: grid;
-  align-items: center;
-}
-
-.obs-main {
-  flex: 1;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  font-weight: 700;
-  color: var(--text);
-}
-
-.obs-side {
-  flex-shrink: 0;
-  justify-items: end;
-  overflow: hidden;
-  font-weight: 500;
-  color: var(--icon-muted);
-  transition: width var(--obs-swap-ms) var(--ease-out);
-}
-
-.obs-main > *,
-.obs-side > * {
-  grid-area: 1 / 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0;
-  transform: translateY(0.45em);
-  transition:
-    opacity var(--obs-swap-ms) var(--ease-out),
-    transform var(--obs-swap-ms) var(--ease-out);
-}
-
-.obs-drag-size {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Plain-text copy of the size readout, measured for the slot width only. */
-.obs-side > .obs-size-measure {
-  position: absolute;
-  visibility: hidden;
-  font-variant-numeric: tabular-nums;
-}
-
-.obs-field[data-mode="drag"] .obs-drag-label,
-.obs-field[data-mode="drag"] .obs-drag-size,
-.obs-field[data-mode="link"] .obs-url,
-.obs-field[data-mode="link"] .obs-copy-label,
-.obs-field[data-mode="copied"] .obs-url,
-.obs-field[data-mode="copied"] .obs-copied-label {
-  opacity: 1;
-  transform: none;
-}
-
-.obs-copied-label {
-  display: inline;
-}
-
-.obs-copied-label {
-  color: #6fce72;
-}
-
-.obs-field .icon-btn {
-  width: 20px;
-  height: 20px;
-  color: var(--text);
-}
-
-.icon-btn {
-  position: relative;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--icon-muted);
-  cursor: pointer;
-  transition: color 0.12s;
-}
-
-.icon-btn:hover {
-  color: #f0f0f0;
-}
-
-/* The copy and check icons are stacked so one can crossfade into the other. */
-.icon-copy,
-.icon-check {
-  position: absolute;
-  inset: 0;
-  display: block;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.icon-btn svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.icon-copy {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.icon-check {
-  opacity: 0;
-  transform: scale(0.5);
-  color: #6fce72;
-}
-
-.obs-field.copied .icon-copy {
-  opacity: 0;
-  transform: scale(0.5);
-}
-
-.obs-field.copied .icon-check {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Clicked instead of dragged: a quick shake says "drag me". */
-.obs-field.nudge {
-  animation: obs-nudge 0.4s ease;
-}
-
-@keyframes obs-nudge {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
 }
 
 .export-zip {
