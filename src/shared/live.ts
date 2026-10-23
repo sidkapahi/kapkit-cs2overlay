@@ -42,6 +42,9 @@ export interface LiveStatus {
   // The stream's category/game name ('' when offline or the platform doesn't
   // report one, e.g. YouTube).
   category: string;
+  // When the current stream started (ms epoch), or null when offline or the
+  // Worker doesn't report it (an older deploy).
+  startedAt: number | null;
 }
 
 // Resolves whether the given channel is currently live on the given platform.
@@ -63,10 +66,11 @@ export async function fetchLive(
       LIVE_FETCH_TIMEOUT_MS,
     );
     if (!res.ok) return null;
-    const body = (await res.json()) as { live?: unknown; category?: unknown };
+    const body = (await res.json()) as { live?: unknown; category?: unknown; startedAt?: unknown };
     if (typeof body.live !== 'boolean') return null;
     const category = typeof body.category === 'string' ? body.category : '';
-    return { live: body.live, category };
+    const started = typeof body.startedAt === 'string' ? Date.parse(body.startedAt) : NaN;
+    return { live: body.live, category, startedAt: body.live && !isNaN(started) ? started : null };
   } catch {
     return null;
   }

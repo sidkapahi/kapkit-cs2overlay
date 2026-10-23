@@ -4,7 +4,9 @@
 // status itself: the YouTube Data API v3 needs an API key that must stay
 // server-side. This Worker keeps the key on Cloudflare and answers a single
 // lookup, adding the CORS headers the browser needs:
-//   • GET ?youtube=<@handle | UC… id | legacy name>  → { live: bool }
+//   • GET ?youtube=<@handle | UC… id | legacy name>  → { live: bool, startedAt: string|null }
+//     (startedAt: when the live broadcast started as ISO 8601, null when
+//     offline or unknown)
 //
 // It's deliberately separate from the other proxies so each platform's
 // credentials live on their own Worker.
@@ -105,8 +107,8 @@ async function resolveYouTubeLive(channel, env, cors) {
   if (!channelId) return json({ error: 'YouTube channel not found' }, 404, cors);
 
   try {
-    const live = await isChannelLive(channelId, env);
-    return json({ live }, 200, cors);
+    const { live, startedAt } = await isChannelLive(channelId, env);
+    return json({ live, startedAt }, 200, cors);
   } catch {
     return json({ error: 'Failed to reach the YouTube API' }, 502, cors);
   }
@@ -172,7 +174,7 @@ async function isChannelLive(channelId, env) {
   const cached = await cache.match(cacheKey);
   if (cached) {
     const body = await cached.json();
-    return !!body.live;
+    return { live: !!body.live, startedAt: typeof body.startedAt === 'string' ? body.startedAt : null };
   }
 
   const res = await fetch(
@@ -183,18 +185,39 @@ async function isChannelLive(channelId, env) {
   if (!res.ok) throw new Error(`youtube ${res.status}`);
   const data = await res.json();
   const live = Array.isArray(data?.items) && data.items.length > 0;
+  const startedAt = live ? await broadcastStart(data.items[0]?.id?.videoId, env) : null;
 
-  // Store the boolean in the edge cache for LIVE_TTL seconds.
+  // Store the result in the edge cache for LIVE_TTL seconds.
   await cache.put(
     cacheKey,
-    new Response(JSON.stringify({ live }), {
+    new Response(JSON.stringify({ live, startedAt }), {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': `max-age=${LIVE_TTL}`,
       },
     }),
   );
-  return live;
+  return { live, startedAt };
+}
+
+// When a live broadcast actually started (ISO 8601), via videos.list's
+// liveStreamingDetails (1 quota unit, and only on a live cache miss). Null on
+// any failure: the start time is a nice-to-have, never worth failing the check.
+async function broadcastStart(videoId, env) {
+  if (typeof videoId !== 'string' || !videoId) return null;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${encodeURIComponent(
+        videoId,
+      )}&key=${env.YOUTUBE_API_KEY}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const start = data?.items?.[0]?.liveStreamingDetails?.actualStartTime;
+    return typeof start === 'string' ? start : null;
+  } catch {
+    return null;
+  }
 }
 
 function json(body, status, cors) {
