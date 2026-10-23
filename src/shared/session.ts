@@ -151,3 +151,24 @@ export function saveSession(
     // ignore: session persistence is a convenience, not a requirement
   }
 }
+
+// The W/L of a stream that started at `startedAt` (ms epoch): the matches in
+// `recent` that finished at or after it. The customizer's preview uses this to
+// show the streamer's live record without the overlay's stored session (which
+// lives in OBS's browser, not the one the customizer runs in). Null when any
+// match lacks a finish time, so the caller falls back to advanceSession.
+export function winLossSince(
+  recent: LeetifyMatch[],
+  startedAt: number,
+): { wins: number; losses: number } | null {
+  let wins = 0;
+  let losses = 0;
+  for (const m of recent) {
+    const finished = m.finished_at ? Date.parse(m.finished_at) : NaN;
+    if (isNaN(finished)) return null;
+    if (finished < startedAt) continue;
+    if (m.outcome === 'win') wins++;
+    else if (m.outcome === 'loss') losses++;
+  }
+  return { wins, losses };
+}

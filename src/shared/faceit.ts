@@ -37,6 +37,8 @@ interface FaceitProfile {
 
 interface FaceitMatch {
   matchId: string | null;
+  // When the match ended (ms epoch); null/absent from an older Worker.
+  finishedAt?: number | null;
   outcome: 'win' | 'loss' | 'tie';
   kills: number | null;
   deaths: number | null;
@@ -57,6 +59,7 @@ function toGame(m: FaceitMatch): LeetifyGame {
   return {
     id: m.matchId ?? '',
     data_source: 'faceit',
+    finished_at: typeof m.finishedAt === 'number' ? new Date(m.finishedAt).toISOString() : undefined,
     outcome: m.outcome,
     rank: null,
     rank_type: null,

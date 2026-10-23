@@ -329,7 +329,10 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
     shown.map(async (item) => {
       const matchId = item?.match_id ?? null;
       const outcome = outcomeFor(item, playerId);
-      const base = { matchId, outcome, kills: null, deaths: null, adr: null, hs: null };
+      // FACEIT gives finished_at in unix seconds; send ms so the customizer can
+      // tell which matches finished during the current stream.
+      const finishedAt = typeof item?.finished_at === 'number' ? item.finished_at * 1000 : null;
+      const base = { matchId, finishedAt, outcome, kills: null, deaths: null, adr: null, hs: null };
       if (!matchId) return base;
 
       try {

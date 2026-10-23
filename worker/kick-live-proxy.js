@@ -5,8 +5,9 @@
 // requires a client id AND secret (the OAuth 2.1 client-credentials flow) that
 // must stay server-side. This Worker keeps those secrets on Cloudflare and
 // answers a single lookup, adding the CORS headers the browser needs:
-//   • GET ?kick=<channel-slug>  → { live: bool, category: string }
-//     (is that channel live now, and the category it's in; '' when offline)
+//   • GET ?kick=<channel-slug>  → { live: bool, category: string, startedAt: string|null }
+//     (is that channel live now, the category it's in, '' when offline, and
+//     when the stream started as ISO 8601, null when offline or unknown)
 //
 // It's deliberately separate from the other proxies so each platform's
 // credentials live on their own Worker.
@@ -104,7 +105,15 @@ async function resolveKickLive(slug, env, cors) {
     const data = await res.json();
     const channel = Array.isArray(data?.data) ? data.data[0] : data?.data ?? data;
     const live = extractLive(channel);
-    return json({ live, category: live ? extractCategory(channel) : '' }, 200, cors);
+    return json(
+      {
+        live,
+        category: live ? extractCategory(channel) : '',
+        startedAt: live ? extractStartedAt(channel) : null,
+      },
+      200,
+      cors,
+    );
   } catch {
     return json({ error: 'Failed to reach the Kick API' }, 502, cors);
   }
@@ -129,6 +138,19 @@ function extractCategory(channel) {
   const cats = channel.livestream?.categories;
   if (Array.isArray(cats) && typeof cats[0]?.name === 'string') return cats[0].name;
   return '';
+}
+
+// Pulls the stream's start time out of a Kick channel object as ISO 8601: the
+// official API's `stream.start_time`, or the older `livestream.created_at`
+// (a UTC "YYYY-MM-DD HH:MM:SS" string). Null when neither parses.
+function extractStartedAt(channel) {
+  if (!channel || typeof channel !== 'object') return null;
+  let raw = channel.stream?.start_time ?? channel.livestream?.created_at;
+  if (typeof raw !== 'string' || !raw) return null;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) raw = raw.replace(' ', 'T') + 'Z';
+  const ms = Date.parse(raw);
+  // Kick reports 0001-01-01 for a stream that hasn't started.
+  return isNaN(ms) || ms <= 0 ? null : new Date(ms).toISOString();
 }
 
 // App access token cache, shared across requests in a warm isolate. Refreshed

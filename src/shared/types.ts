@@ -32,6 +32,9 @@ export interface LeetifyProfile {
 export interface LeetifyMatch {
   id: string;
   data_source: string;
+  // When the match ended (ISO 8601). Leetify sends it; the FACEIT Worker sends
+  // `finishedAt` (see faceit.ts). Optional: older payloads lack it.
+  finished_at?: string;
   outcome: 'win' | 'loss' | 'tie';
   rank: number | null;
   // Numeric game-mode id from Leetify (e.g. Premier vs Competitive), not a
