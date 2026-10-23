@@ -24,7 +24,14 @@ import {
 } from "../shared/config";
 import { downloadOverlayZip } from "../shared/export";
 import { FONT_WEIGHTS, GOOGLE_FONTS, fontStack, loadFont } from "../shared/fonts";
+import { fetchLive, liveCheckAvailable, type LiveStatus } from "../shared/live";
 import { renderSkeleton, renderWidget } from "../shared/render";
+import {
+  advanceSession,
+  readWinLoss,
+  winLossSince,
+  type SessionState,
+} from "../shared/session";
 import { loadSkeletonHint, saveSkeletonHint } from "../shared/skeletonHint";
 import {
   gitHubLogo,
@@ -190,7 +197,7 @@ function measureOverlaySize(): { width: number; height: number } | null {
       "position:fixed;left:-10000px;top:0;width:max-content;visibility:hidden;pointer-events:none;contain:layout style;";
     document.body.appendChild(box);
   }
-  box.innerHTML = renderWidget(currentConfig, slot.data);
+  box.innerHTML = renderWidget(currentConfig, previewData(slot.data));
   const widget = box.querySelector<HTMLElement>(".widget");
   const rect = widget?.getBoundingClientRect();
   box.innerHTML = "";
@@ -362,7 +369,7 @@ function renderPreview() {
 
   const key = `${currentConfig.steamId}#${loadGen}`;
   if (slot?.status === "ok" && !error) {
-    const html = renderWidget(currentConfig, slot.data);
+    const html = renderWidget(currentConfig, previewData(slot.data));
     animatePreview(body, html, key, fitPreview);
     shownKey = key;
     updateObsDragLink();
@@ -752,6 +759,67 @@ function applyLive() {
   const live = wlMode === "live" ? liveParsed : null;
   currentConfig.livePlatform = live?.platform ?? "";
   currentConfig.liveChannel = live?.channel ?? "";
+  watchLive();
+}
+
+// ---- Live W/L in the preview -----------------------------------------------
+// With W/L on STREAM, the preview shows the streamer's record for the stream
+// they're on now (0/0 while offline), checked as often as the overlay checks.
+// The overlay's own session lives in OBS's browser, so the preview rebuilds
+// it: the matches finished since the stream started, or, when the Worker
+// doesn't report a start time, the overlay's session logic run from the first
+// time this page saw the stream live.
+const LIVE_POLL_MS = 15000;
+// The channel being watched ('platform:channel', '' = none) and its latest
+// status (null until the first check answers).
+let liveKey = "";
+let liveStatus: LiveStatus | null = null;
+let liveTimer: ReturnType<typeof setTimeout> | null = null;
+// Fallback sessions for the watched channel, per Steam ID and provider.
+let liveSessions: Record<string, SessionState> = {};
+
+function watchLive() {
+  const key = currentConfig.liveChannel
+    ? `${currentConfig.livePlatform}:${currentConfig.liveChannel}`
+    : "";
+  if (key === liveKey) return;
+  liveKey = key;
+  liveStatus = null;
+  liveSessions = {};
+  if (liveTimer) clearTimeout(liveTimer);
+  // Wait for the link to settle: it's applied on every keystroke.
+  liveTimer = key ? setTimeout(pollLive, 600) : null;
+  // Show the new source's W/L now: 0/0 until the check answers, or TOTAL.
+  renderPreview();
+}
+
+async function pollLive() {
+  const key = liveKey;
+  const status = await fetchLive(currentConfig.livePlatform, currentConfig.liveChannel);
+  if (key !== liveKey) return; // the link changed while this was in flight
+  // null = status unknown (a blip): keep the last answer, like the overlay.
+  if (status) {
+    liveStatus = status;
+    renderPreview();
+  }
+  liveTimer = setTimeout(pollLive, LIVE_POLL_MS);
+}
+
+// The data the preview renders: the loaded stats, with the W/L swapped for the
+// stream's record when W/L is on STREAM. Without a live proxy for the
+// platform the overlay keeps the rolling W/L, so the preview does too.
+function previewData(data: PremierData): PremierData {
+  if (!currentConfig.liveChannel || !liveCheckAvailable(currentConfig.livePlatform)) return data;
+  if (!liveStatus?.live) return { ...data, wins: 0, losses: 0 };
+  const since =
+    liveStatus.startedAt != null ? winLossSince(data.recentGames, liveStatus.startedAt) : null;
+  if (since) return { ...data, ...since };
+  const key = `${currentConfig.steamId}:${currentConfig.provider}`;
+  const prev = liveSessions[key] ?? { live: false, preSessionIds: [], results: {} };
+  const session = advanceSession(prev, true, data.recentGames);
+  liveSessions[key] = session;
+  const wl = readWinLoss(session);
+  return { ...data, wins: wl.wins, losses: wl.losses };
 }
 
 function syncWlUi() {
