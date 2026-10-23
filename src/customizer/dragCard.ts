@@ -18,8 +18,8 @@ const spring = (extra: { damping?: number } = {}) =>
 const MAX_TILT = 8;
 // Inertia: the card is pulled toward the cursor by a spring rather than
 // pinned to it, so it trails a fast move and settles with a small overshoot.
-const FOLLOW_STIFFNESS = 600;
-const FOLLOW_DAMPING = 31;
+const FOLLOW_STIFFNESS = 75;
+const FOLLOW_DAMPING = 11;
 
 // A 1x1 transparent GIF, so the browser draws no drag image of its own. It
 // has to be loaded before the drag starts.
