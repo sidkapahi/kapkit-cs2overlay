@@ -112,14 +112,17 @@ export function initDragCard(field: HTMLElement) {
     const rect = document.createElementNS(ns, "rect");
     // Sizes are in the card's own pixels, before the 60% zoom.
     const sw = 2.5 / CARD_SCALE;
-    const step = 9 / CARD_SCALE;
+    // Each dash is 2.5px long plus its round caps, repeating every 11px
+    // on screen.
+    const dash = 2.5 / CARD_SCALE;
+    const step = 11 / CARD_SCALE;
     rect.setAttribute("x", String(sw / 2));
     rect.setAttribute("y", String(sw / 2));
     rect.setAttribute("width", String(w + 20 - sw));
     rect.setAttribute("height", String(h + 20 - sw));
     rect.setAttribute("rx", "28");
     rect.setAttribute("stroke-width", String(sw));
-    rect.setAttribute("stroke-dasharray", `0 ${step}`);
+    rect.setAttribute("stroke-dasharray", `${dash} ${step - dash}`);
     rect.dataset.step = String(step);
     svg.append(rect);
     return svg;
