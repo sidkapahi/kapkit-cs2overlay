@@ -1041,7 +1041,54 @@ select.field-input option {
 }
 
 .exportbar.is-empty .export-obs,
-.exportbar.is-empty .export-zip {
+.exportbar.is-empty /* While dragged, the field stays behind as a dashed outline (dragCard.ts). */
+.obs-field.is-dragging {
+  border-style: dashed;
+}
+
+.obs-field.is-dragging > * {
+  opacity: 0.35;
+}
+
+/* The overlay card that follows the cursor while the field is dragged
+   (dragCard.ts): .drag-card moves, .drag-card-lift scales and tilts. */
+.drag-card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  width: max-content;
+  pointer-events: none;
+}
+
+.drag-card-lift {
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.drag-card-zoom {
+  position: relative;
+}
+
+.drag-card .widget {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.drag-card-dots {
+  position: absolute;
+  inset: -10px;
+  width: calc(100% + 20px);
+  height: calc(100% + 20px);
+  overflow: visible;
+}
+
+.drag-card-dots rect {
+  fill: none;
+  stroke: #f0f0f0;
+  stroke-linecap: round;
+}
+
+.export-zip {
   opacity: 0.24;
   pointer-events: none;
 }

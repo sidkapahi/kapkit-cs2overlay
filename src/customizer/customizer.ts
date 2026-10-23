@@ -53,6 +53,7 @@ import {
 import NumberFlow from "number-flow";
 import { createPreviewAnimator } from "./previewMotion";
 import { initAds } from "./ads";
+import { initDragCard } from "./dragCard";
 import "../widget/widget.css";
 import "./customizer.css";
 
@@ -1194,6 +1195,7 @@ function bindControls() {
   });
 
   const dragLink = document.getElementById("obs-drag")!;
+  const dragCard = initDragCard(dragLink);
   let copiedTimer = 0;
   const copyBtn = document.getElementById("copy-url")!;
   copyBtn.addEventListener("pointerdown", (e) => {
@@ -1256,6 +1258,8 @@ function bindControls() {
     e.dataTransfer.effectAllowed = "copyLink";
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
+    const slot = slots[currentConfig.provider];
+    if (slot?.status === "ok") dragCard.start(e, renderWidget(currentConfig, slot.data));
     trackEvent("widget_url_dragged", configEventProps(currentConfig));
   });
   // Web fonts change the card's size once they arrive.
