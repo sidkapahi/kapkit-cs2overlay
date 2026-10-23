@@ -53,7 +53,6 @@ import {
 import NumberFlow from "number-flow";
 import { createPreviewAnimator } from "./previewMotion";
 import { initAds } from "./ads";
-import { initDragTestPanel, setDragGhost } from "./dragGhost";
 import "../widget/widget.css";
 import "./customizer.css";
 
@@ -1257,13 +1256,8 @@ function bindControls() {
     e.dataTransfer.effectAllowed = "copyLink";
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
-    const slot = slots[currentConfig.provider];
-    if (slot?.status === "ok") setDragGhost(e, dragLink, renderWidget(currentConfig, slot.data));
-    // The field stays behind as a dashed outline while it's being dragged.
-    dragLink.classList.add("is-dragging");
     trackEvent("widget_url_dragged", configEventProps(currentConfig));
   });
-  dragLink.addEventListener("dragend", () => dragLink.classList.remove("is-dragging"));
   // Web fonts change the card's size once they arrive.
   document.fonts?.addEventListener?.("loadingdone", updateObsDragLink);
 
@@ -1696,7 +1690,6 @@ function init() {
   bindControls();
   syncControlsFromConfig();
   initSegThumbs();
-  initDragTestPanel();
   initAds();
   bindScrollFades();
   mountConsentUi();
