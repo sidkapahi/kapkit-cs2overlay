@@ -189,18 +189,30 @@ async function init() {
     // only a failure that survives the retry is treated as real.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        lastData = await fetchStats();
+        const data = await fetchStats();
+        const key = statsKey(data);
+        // The leaderboard positions (Challenger #, regional and country rank)
+        // drift by a place or two as other players play. They stay frozen
+        // between the player's own games and only move when a poll brings new
+        // stats of theirs, like everything else on the card (Sid, 2026-10-23).
+        const changed = !!lastStatsKey && key !== lastStatsKey;
+        lastData =
+          lastData && !changed
+            ? {
+                ...data,
+                regionRank: lastData.regionRank,
+                countryRank: lastData.countryRank,
+                leaderboardPosition: lastData.leaderboardPosition,
+              }
+            : data;
+        lastStatsKey = key;
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
         render();
         // The rank cycle only plays when a poll brings new stats of the
         // player's own: not on the page load (a reload, or the auto-reload onto
         // a new build) and not on polls where nothing moved (Sid, 2026-10-15).
-        // The leaderboard positions are left out: they drift by a place or two
-        // as other players play, which would replay the cycle every poll.
-        const key = statsKey(lastData);
-        if (lastStatsKey && key !== lastStatsKey) rankCycle.play();
-        lastStatsKey = key;
+        if (changed) rankCycle.play();
         return;
       } catch (e) {
         lastError = e;
