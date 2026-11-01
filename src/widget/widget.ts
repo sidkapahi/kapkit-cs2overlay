@@ -13,7 +13,9 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
+import { flagUrl, regionFlagUrl } from '../shared/flags';
 import { createNumberAnimator, playIntro } from './animateNumbers';
+import { imagesReady, retryFailedImages, warmImages } from './cardImages';
 import { watchForNewBuild } from './autoReload';
 import { morphCardFrom } from './morphCard';
 import { createRankCycle } from './rankCycle';
@@ -63,7 +65,14 @@ async function init() {
   // Until the first stats arrive, a shimmering skeleton of the card for these
   // settings. It's sized from this player's last load where there was one, so
   // a refresh or a new-deploy reload shows a skeleton the card's exact size.
-  container.innerHTML = renderSkeleton(config, loadSkeletonHint(config.steamId, config.provider));
+  const hint = loadSkeletonHint(config.steamId, config.provider);
+  container.innerHTML = renderSkeleton(config, hint);
+  // Start fetching the flags we expect while the stats load, so the real card
+  // doesn't come in with an empty flag; retry any card image that fails.
+  if (config.provider === 'faceit' && hint) {
+    warmImages([flagUrl(hint.country), regionFlagUrl(hint.region)]);
+  }
+  retryFailedImages(container);
 
   // Session-scoped W/L is active only when a live channel is set *and* that
   // platform's proxy is configured; otherwise the pills keep their default
@@ -208,6 +217,9 @@ async function init() {
         lastStatsKey = key;
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
+        // The first real card waits (briefly) for its flag and avatar, so they
+        // come in with the intro instead of popping in after it.
+        if (!lastHtml) await imagesReady(renderWidget(config, lastData));
         render();
         // The rank cycle only plays when a poll brings new stats of the
         // player's own: not on the page load (a reload, or the auto-reload onto
