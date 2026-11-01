@@ -339,8 +339,11 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
         const res = await fetch(`${FACEIT_BASE}/matches/${matchId}/stats`, {
           ...auth,
           // Finished-match stats are immutable — cache them hard so a widget
-          // refresh doesn't re-fetch every match every minute.
-          cf: { cacheTtl: 86400, cacheEverything: true },
+          // refresh doesn't re-fetch every match every minute. Only a success,
+          // though: right after a match FACEIT can answer 404 until its stats
+          // are ready, and a cached miss would hide that match's numbers (or
+          // make them come and go between polls) long after they exist.
+          cf: { cacheTtlByStatus: { '200-299': 86400, '400-599': 0 }, cacheEverything: true },
         });
         if (!res.ok) return base;
         const stats = await res.json();

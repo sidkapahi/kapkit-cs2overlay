@@ -41,6 +41,39 @@ function statsKey(data: PremierData): string {
   return JSON.stringify({ ...data, regionRank: 0, countryRank: 0, leaderboardPosition: 0 });
 }
 
+// What makes the FACEIT rank cycle play: a new match, or the ELO or level
+// moving. Not the rest of the payload, which can wobble between polls while
+// nothing happened (a just-finished match's stats coming and going as FACEIT
+// catches up), and used to replay the cycle every minute on some streams.
+function cycleKey(data: PremierData): string {
+  return JSON.stringify([data.recentGames[0]?.id ?? '', data.rating, data.skillLevel ?? null]);
+}
+
+// A match whose per-match stats this poll couldn't get (FACEIT hasn't got them
+// yet, or the lookup failed) keeps the ones an earlier poll did get, so its
+// numbers don't drop out and come back between polls.
+function keepMatchStats(data: PremierData, prev: PremierData | null): PremierData {
+  if (!prev) return data;
+  const before = new Map(prev.recentGames.map((g) => [g.id, g]));
+  let filled = false;
+  const recentGames = data.recentGames.map((g) => {
+    const old = g.id ? before.get(g.id) : undefined;
+    if (!old) return g;
+    const missingStats = g.kills == null && g.deaths == null && old.kills != null;
+    const missingElo = g.eloChange == null && old.eloChange != null;
+    if (!missingStats && !missingElo) return g;
+    filled = true;
+    return {
+      ...g,
+      ...(missingStats
+        ? { kills: old.kills, deaths: old.deaths, adr: old.adr, accuracy_head: old.accuracy_head }
+        : {}),
+      ...(missingElo ? { eloChange: old.eloChange } : {}),
+    };
+  });
+  return filled ? { ...data, recentGames } : data;
+}
+
 // An element's box on the page ignoring any transform on it (centred origin).
 function layoutRect(el: HTMLElement): DOMRect {
   const r = el.getBoundingClientRect();
@@ -198,8 +231,9 @@ async function init() {
     // only a failure that survives the retry is treated as real.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const data = await fetchStats();
+        const data = keepMatchStats(await fetchStats(), lastData);
         const key = statsKey(data);
+        const played = !!lastData && cycleKey(data) !== cycleKey(lastData);
         // The leaderboard positions (Challenger #, regional and country rank)
         // drift by a place or two as other players play. They stay frozen
         // between the player's own games and only move when a poll brings new
@@ -224,7 +258,8 @@ async function init() {
         // The rank cycle only plays when a poll brings new stats of the
         // player's own: not on the page load (a reload, or the auto-reload onto
         // a new build) and not on polls where nothing moved (Sid, 2026-10-15).
-        if (changed) rankCycle.play();
+        // Only a new match or an ELO / level move counts (see cycleKey).
+        if (played) rankCycle.play();
         return;
       } catch (e) {
         lastError = e;
