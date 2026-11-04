@@ -370,6 +370,9 @@ function fitPreview() {
   widget.style.transform = `scale(${scale})`;
 }
 
+const PRIVATE_PROFILE_TEXT =
+  "This Leetify profile is private, so match stats can't load. Set match data to public in Leetify's privacy settings.";
+
 function promptCardHtml(text: string): string {
   return `<div class="preview-prompt">${text}</div>`;
 }
@@ -396,8 +399,15 @@ function renderPreview() {
         ? slot.error.message
         : "Failed to load"
       : null);
-  banner.hidden = !error;
-  if (error) bannerText.textContent = error;
+  // A private Leetify profile loads, but with no matches, so the per-match
+  // stats are dashes. Say why (and how to fix it) above the card.
+  const warning =
+    !error && slot?.status === "ok" && currentConfig.provider === "leetify" && slot.data.privateProfile
+      ? PRIVATE_PROFILE_TEXT
+      : null;
+  banner.hidden = !error && !warning;
+  banner.classList.toggle("is-warning", !!warning);
+  if (error || warning) bannerText.textContent = error ?? warning;
 
   const key = `${currentConfig.steamId}#${loadGen}`;
   if (slot?.status === "ok" && !error) {

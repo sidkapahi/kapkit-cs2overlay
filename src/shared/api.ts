@@ -66,6 +66,10 @@ export interface PremierData {
   losses: number;
   recentGames: LeetifyGame[];
   aimRating: number;
+  // Leetify only: the player's Leetify profile is private, so Leetify returns
+  // no matches and every per-match stat (K/D, AVG, WIN %, ADR, HS %, history)
+  // is blank. The customizer warns about it.
+  privateProfile?: boolean;
   // FACEIT-only fields, unset in Premier (Leetify) mode. `render.ts` reads them
   // only when the widget's provider is 'faceit'.
   //
@@ -197,6 +201,7 @@ export async function fetchPremierData(steamId: string): Promise<PremierData> {
     losses,
     recentGames,
     aimRating: data.rating.aim,
+    privateProfile: data.privacy_mode === 'private' && recentGames.length === 0,
   };
 }
 
