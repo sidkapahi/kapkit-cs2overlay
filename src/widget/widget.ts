@@ -13,7 +13,9 @@ import {
   type SessionState,
 } from '../shared/session';
 import { fetchLive, liveCheckAvailable } from '../shared/live';
+import { flagUrl, regionFlagUrl } from '../shared/flags';
 import { createNumberAnimator, playIntro } from './animateNumbers';
+import { imagesReady, retryFailedImages, warmImages } from './cardImages';
 import { watchForNewBuild } from './autoReload';
 import { morphCardFrom } from './morphCard';
 import { createRankCycle } from './rankCycle';
@@ -37,6 +39,39 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // country and Challenger rank), which move as other players play.
 function statsKey(data: PremierData): string {
   return JSON.stringify({ ...data, regionRank: 0, countryRank: 0, leaderboardPosition: 0 });
+}
+
+// What makes the FACEIT rank cycle play: a new match, or the ELO or level
+// moving. Not the rest of the payload, which can wobble between polls while
+// nothing happened (a just-finished match's stats coming and going as FACEIT
+// catches up), and used to replay the cycle every minute on some streams.
+function cycleKey(data: PremierData): string {
+  return JSON.stringify([data.recentGames[0]?.id ?? '', data.rating, data.skillLevel ?? null]);
+}
+
+// A match whose per-match stats this poll couldn't get (FACEIT hasn't got them
+// yet, or the lookup failed) keeps the ones an earlier poll did get, so its
+// numbers don't drop out and come back between polls.
+function keepMatchStats(data: PremierData, prev: PremierData | null): PremierData {
+  if (!prev) return data;
+  const before = new Map(prev.recentGames.map((g) => [g.id, g]));
+  let filled = false;
+  const recentGames = data.recentGames.map((g) => {
+    const old = g.id ? before.get(g.id) : undefined;
+    if (!old) return g;
+    const missingStats = g.kills == null && g.deaths == null && old.kills != null;
+    const missingElo = g.eloChange == null && old.eloChange != null;
+    if (!missingStats && !missingElo) return g;
+    filled = true;
+    return {
+      ...g,
+      ...(missingStats
+        ? { kills: old.kills, deaths: old.deaths, adr: old.adr, accuracy_head: old.accuracy_head }
+        : {}),
+      ...(missingElo ? { eloChange: old.eloChange } : {}),
+    };
+  });
+  return filled ? { ...data, recentGames } : data;
 }
 
 // An element's box on the page ignoring any transform on it (centred origin).
@@ -63,7 +98,14 @@ async function init() {
   // Until the first stats arrive, a shimmering skeleton of the card for these
   // settings. It's sized from this player's last load where there was one, so
   // a refresh or a new-deploy reload shows a skeleton the card's exact size.
-  container.innerHTML = renderSkeleton(config, loadSkeletonHint(config.steamId, config.provider));
+  const hint = loadSkeletonHint(config.steamId, config.provider);
+  container.innerHTML = renderSkeleton(config, hint);
+  // Start fetching the flags we expect while the stats load, so the real card
+  // doesn't come in with an empty flag; retry any card image that fails.
+  if (config.provider === 'faceit' && hint) {
+    warmImages([flagUrl(hint.country), regionFlagUrl(hint.region)]);
+  }
+  retryFailedImages(container);
 
   // Session-scoped W/L is active only when a live channel is set *and* that
   // platform's proxy is configured; otherwise the pills keep their default
@@ -189,8 +231,9 @@ async function init() {
     // only a failure that survives the retry is treated as real.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const data = await fetchStats();
+        const data = keepMatchStats(await fetchStats(), lastData);
         const key = statsKey(data);
+        const played = !!lastData && cycleKey(data) !== cycleKey(lastData);
         // The leaderboard positions (Challenger #, regional and country rank)
         // drift by a place or two as other players play. They stay frozen
         // between the player's own games and only move when a poll brings new
@@ -208,11 +251,15 @@ async function init() {
         lastStatsKey = key;
         statsHealthy = true;
         saveSkeletonHint(config.steamId, config.provider, lastData);
+        // The first real card waits (briefly) for its flag and avatar, so they
+        // come in with the intro instead of popping in after it.
+        if (!lastHtml) await imagesReady(renderWidget(config, lastData));
         render();
         // The rank cycle only plays when a poll brings new stats of the
         // player's own: not on the page load (a reload, or the auto-reload onto
         // a new build) and not on polls where nothing moved (Sid, 2026-10-15).
-        if (changed) rankCycle.play();
+        // Only a new match or an ELO / level move counts (see cycleKey).
+        if (played) rankCycle.play();
         return;
       } catch (e) {
         lastError = e;
