@@ -103,7 +103,9 @@ export function createNumberAnimator() {
       strip && items.length === strip.children.length
         ? items.map((el) => ({ id: el.dataset.histId!, html: el.outerHTML }))
         : null;
-    if (!before || !prevHistory || items.length < 2 || reducedMotion()) return;
+    // `before` is empty after a render with no matches (a failed history
+    // lookup); there is nothing to line up then, and before[0] would throw.
+    if (!before?.length || !prevHistory || items.length < 2 || reducedMotion()) return;
 
     // How many new matches were added at the front: the old newest match now
     // sits that many slots further right.
