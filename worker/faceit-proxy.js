@@ -218,6 +218,10 @@ async function resolveProfile(rawSteam64, history, env, cors) {
   // The Challenger pill is the regional position, shown only for level 10.
   const position = level === 10 ? regionRank : null;
 
+  if (recent.failed) {
+    return json({ error: `FACEIT API error: ${recent.failed} (match history)` }, 502, cors);
+  }
+
   // 6. Record this poll's ELO and read back the per-match changes recorded so
   // far (see trackElo). Attach each shown match's change (e.g. +23 / -12) for
   // the history strip's ELO mode — null for a match played before tracking
@@ -307,11 +311,15 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
       `${FACEIT_BASE}/players/${playerId}/history?game=cs2&offset=0&limit=${WL_WINDOW}`,
       auth,
     );
-    if (!res.ok) return { matches: [], wins: 0, losses: 0, ids: [] };
+    // A failed history call is an error, not an empty history: answering with
+    // no matches made every stat, the W/L and the history strip blank out for
+    // one poll and animate back in on the next. `failed` makes the profile
+    // answer 502, so the widget keeps the card it has.
+    if (!res.ok) return { matches: [], wins: 0, losses: 0, ids: [], failed: res.status };
     const data = await res.json();
     items = Array.isArray(data?.items) ? data.items : [];
   } catch {
-    return { matches: [], wins: 0, losses: 0, ids: [] };
+    return { matches: [], wins: 0, losses: 0, ids: [], failed: 'network' };
   }
 
   // TOTAL win/loss over the whole window — outcomes are in the list already.

@@ -231,7 +231,16 @@ async function init() {
     // only a failure that survives the retry is treated as real.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const data = keepMatchStats(await fetchStats(), lastData);
+        const fresh = await fetchStats();
+        // A poll that comes back with no matches when the last one had them is
+        // a failed FACEIT/Leetify lookup, not the player's history vanishing.
+        // Rendering it blanked every stat and the history strip for a minute and
+        // then animated them all back in, so treat it as a failed poll and keep
+        // the card as it is.
+        if (lastData?.recentGames.length && !fresh.recentGames.length) {
+          throw new Error('API error: poll came back without matches');
+        }
+        const data = keepMatchStats(fresh, lastData);
         const key = statsKey(data);
         const played = !!lastData && cycleKey(data) !== cycleKey(lastData);
         // The leaderboard positions (Challenger #, regional and country rank)
