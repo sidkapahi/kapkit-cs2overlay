@@ -1395,7 +1395,7 @@ function mountConsentUi() {
           <button type="button" class="modal-close" id="privacy-close" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="modal-updated">Last updated: 2026-09-28</p>
+          <p class="modal-updated">Last updated: 2026-11-17</p>
           <p>kapKit's CS2 overlay customizer uses <strong>PostHog</strong>, a privacy-friendly analytics service, to understand how the tool is used so it can be improved. We keep this to a minimum and never sell your data.</p>
 
           <h3>What we collect on the customizer</h3>
@@ -1408,12 +1408,16 @@ function mountConsentUi() {
             <li>When you copy the widget URL, drag it into OBS, or export the ZIP</li>
             <li>Clicks on the GitHub, Ko-fi, and Twitch links</li>
             <li>Errors, so broken states can be found and fixed</li>
+            <li>Session recordings, explained below</li>
           </ul>
+
+          <h3>Session recordings</h3>
+          <p>If you allow analytics, PostHog also records how you use this page: mouse movements, clicks, scrolling, and what appears on screen. We watch these replays to find confusing spots and bugs. Everything you type into a field (your Steam ID or profile link, your channel) is hidden in the recording, and so is the generated widget link. Recordings are never made in the OBS overlay, and nothing is recorded if you reject analytics.</p>
 
           <h3>What we do NOT collect</h3>
           <ul>
             <li>Your Steam ID is never attached to analytics</li>
-            <li>No session recording, no keystrokes, no personal profiles</li>
+            <li>No keystrokes or field contents, and no personal profiles</li>
             <li>We don't sell or share your data</li>
           </ul>
 

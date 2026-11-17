@@ -112,8 +112,16 @@ events you'll see mixed in:
 | `$opt_in` | Recorded the moment the visitor consents (when we call PostHog's opt-in). One per acceptance. |
 
 We **have disabled** several other PostHog defaults, so you should **not** see:
-`$autocapture` / `$rageclick` (autocapture off), `$feature_flag_called` (feature
-flags off), and `$snapshot` (session recording off).
+`$autocapture` / `$rageclick` (autocapture off) and `$feature_flag_called` (feature
+flags off).
+
+Session recording is **on** for the customizer (since 2026-11-17), so you'll see
+`$snapshot` data as replays under Session replay. It only runs after the visitor
+accepts the cookie banner. All inputs are masked, and the generated widget URL
+(`#generated-url`, it contains the Steam ID) is text-masked. Console logs are not
+recorded (they can include request URLs with the Steam ID). The OBS overlay never
+records. Recording also has to be enabled in the PostHog project settings
+(Settings → Session replay → Record user sessions).
 
 ### Turning the automatic ones off
 
