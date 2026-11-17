@@ -19,6 +19,7 @@ import { imagesReady, retryFailedImages, warmImages } from './cardImages';
 import { watchForNewBuild } from './autoReload';
 import { morphCardFrom } from './morphCard';
 import { createRankCycle } from './rankCycle';
+import { watchObsStreaming } from './obsStreaming';
 import './widget.css';
 
 // How often to check stream live status, independent of the (slower) stats
@@ -124,6 +125,12 @@ async function init() {
   // linked across sessions, so these are counts, not unique-user figures.
   initOverlayAnalytics();
   trackOverlayEvent('overlay_active', {
+    live: sessionMode,
+    platform: sessionMode ? config.livePlatform : '',
+  });
+  // Anonymous "this overlay is on a live stream" pings, from OBS's own
+  // streaming status, so streams without a channel set are counted too.
+  watchObsStreaming({
     live: sessionMode,
     platform: sessionMode ? config.livePlatform : '',
   });
