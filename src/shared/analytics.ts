@@ -61,7 +61,19 @@ export function initAnalytics() {
     // deriveUiHost) so posthog-js keeps its own correct default.
     ...(POSTHOG_UI_HOST ? { ui_host: POSTHOG_UI_HOST } : {}),
     autocapture: false, // we send explicit, named events only
-    disable_session_recording: true,
+    // Session recording (replays of how people use the customizer). Like every
+    // other capture it only starts after the visitor accepts the cookie banner,
+    // because capturing starts opted out. Every form field is masked, so the
+    // Steam ID / account and channel boxes never appear in a replay, and the
+    // generated widget URL (it contains the Steam ID) is masked too.
+    disable_session_recording: false,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: "#generated-url, .obs-url",
+    },
+    // Console logs can contain request URLs with the Steam ID, so keep them out
+    // of replays even though the PostHog project has console capture on.
+    enable_recording_console_log: false,
     advanced_disable_feature_flags: true,
     // Never build person profiles for anonymous events — cheaper and more
     // private; we only ever send anonymous counts.

@@ -1395,7 +1395,7 @@ function mountConsentUi() {
           <button type="button" class="modal-close" id="privacy-close" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="modal-updated">Last updated: 2026-09-28</p>
+          <p class="modal-updated">Last updated: 2026-11-17</p>
           <p>kapKit's CS2 overlay customizer uses <strong>PostHog</strong>, a privacy-friendly analytics service, to understand how the tool is used so it can be improved. We keep this to a minimum and never sell your data.</p>
 
           <h3>What we collect on the customizer</h3>
@@ -1408,12 +1408,16 @@ function mountConsentUi() {
             <li>When you copy the widget URL, drag it into OBS, or export the ZIP</li>
             <li>Clicks on the GitHub, Ko-fi, and Twitch links</li>
             <li>Errors, so broken states can be found and fixed</li>
+            <li>Session recordings, explained below</li>
           </ul>
+
+          <h3>Session recordings</h3>
+          <p>If you allow analytics, PostHog also records how you use this page: mouse movements, clicks, scrolling, and what appears on screen. We watch these replays to find confusing spots and bugs. Everything you type into a field (your Steam ID or profile link, your channel) is hidden in the recording, and so is the generated widget link. Recordings are never made in the OBS overlay, and nothing is recorded if you reject analytics.</p>
 
           <h3>What we do NOT collect</h3>
           <ul>
             <li>Your Steam ID is never attached to analytics</li>
-            <li>No session recording, no keystrokes, no personal profiles</li>
+            <li>No keystrokes or field contents, and no personal profiles</li>
             <li>We don't sell or share your data</li>
           </ul>
 
@@ -1421,7 +1425,7 @@ function mountConsentUi() {
           <p>If you set a live session, the overlay checks whether your channel is streaming by asking the matching platform — <strong>Twitch</strong>, <strong>YouTube</strong>, or <strong>Kick</strong> — through a small proxy service. Only your <strong>public channel handle</strong> is sent (never your Steam ID), and the proxy shields your viewers' IP addresses from the platform. The YouTube check uses <strong>YouTube API Services</strong>; by using it you're also subject to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube Terms of Service</a>, and Google's handling of any data is covered by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</p>
 
           <h3>The overlay is cookieless</h3>
-          <p>The OBS overlay itself sets <strong>no cookies</strong> and stores nothing on your machine for analytics. It sends only anonymous counts (that it loaded, that a stream went live, a periodic "still live" ping while you stream, and errors), so it needs no consent and shows no banner on stream. If you set a live session, the go-live and "still live" events include your <strong>public channel handle</strong> and platform, so we can see which streams are using the overlay; your Steam ID is never included.</p>
+          <p>The OBS overlay itself sets <strong>no cookies</strong> and stores nothing on your machine for analytics. It sends only anonymous counts (that it loaded, that a stream went live, a periodic "still live" ping while you stream, and errors). In OBS it also reads whether OBS is streaming, so we can count how many streams use the overlay even without a channel; that ping carries nothing that identifies you, so it needs no consent and shows no banner on stream. If you set a live session, the go-live and "still live" events include your <strong>public channel handle</strong> and platform, so we can see which streams are using the overlay; your Steam ID is never included.</p>
 
           <h3>Cookies &amp; your choice</h3>
           <p>On this customizer, analytics uses first-party cookies to recognise return visits. You choose whether to allow them — rejecting means no analytics cookies are set. You can change your mind any time right here:</p>
