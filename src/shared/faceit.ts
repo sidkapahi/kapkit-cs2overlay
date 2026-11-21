@@ -130,7 +130,19 @@ export async function fetchFaceitData(steamId: string, history?: number): Promis
   if (res.status === 404) {
     throw new Error("That Steam account has no FACEIT profile for CS2");
   }
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    // Carry the Worker's own reason (e.g. "FACEIT API error: 403") so the
+    // overlay_error `detail` in PostHog says what FACEIT answered, not just the
+    // proxy's 502. The leading status still drives classifyFetchError.
+    let reason = '';
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (typeof body?.error === 'string') reason = body.error.slice(0, 80);
+    } catch {
+      // Not JSON; the status alone will do.
+    }
+    throw new Error(`API error: ${res.status}${reason ? ` (${reason})` : ''}`);
+  }
 
   const p = (await res.json()) as FaceitProfile;
 

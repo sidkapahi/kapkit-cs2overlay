@@ -149,7 +149,10 @@ async function resolveNickname(rawNickname, env, cors) {
     if (res.status === 404) {
       return json({ error: 'No FACEIT player found for that nickname' }, 404, cors);
     }
-    if (!res.ok) return json({ error: `FACEIT API error: ${res.status}` }, 502, cors);
+    if (!res.ok) {
+      await logUpstreamFailure('nickname lookup', res);
+      return json({ error: `FACEIT API error: ${res.status}` }, 502, cors);
+    }
     const player = await res.json();
     const steamId = String(player?.games?.cs2?.game_player_id ?? '');
     if (!/^\d{17}$/.test(steamId)) {
@@ -190,10 +193,14 @@ async function resolveProfile(rawSteam64, history, env, cors) {
     if (res.status === 404) {
       return json({ error: 'No FACEIT player found for that Steam account' }, 404, cors);
     }
-    if (!res.ok) return json({ error: `FACEIT API error: ${res.status}` }, 502, cors);
+    if (!res.ok) {
+      await logUpstreamFailure('player lookup', res);
+      return staleOr(steam64, history, `FACEIT API error: ${res.status}`, cors);
+    }
     player = await res.json();
-  } catch {
-    return json({ error: 'Failed to reach the FACEIT API' }, 502, cors);
+  } catch (e) {
+    console.warn(JSON.stringify({ faceitFailure: 'player lookup', error: String(e) }));
+    return staleOr(steam64, history, 'Failed to reach the FACEIT API', cors);
   }
 
   const cs2 = player?.games?.cs2 ?? {};
@@ -219,7 +226,7 @@ async function resolveProfile(rawSteam64, history, env, cors) {
   const position = level === 10 ? regionRank : null;
 
   if (recent.failed) {
-    return json({ error: `FACEIT API error: ${recent.failed} (match history)` }, 502, cors);
+    return staleOr(steam64, history, `FACEIT API error: ${recent.failed} (match history)`, cors);
   }
 
   // 6. Record this poll's ELO and read back the per-match changes recorded so
@@ -235,40 +242,101 @@ async function resolveProfile(rawSteam64, history, env, cors) {
     return { ...m, eloChange };
   });
 
-  return json(
-    {
-      nickname: player.nickname ?? '',
-      playerId,
-      country,
-      avatarUrl: typeof player.avatar === 'string' ? player.avatar : '',
-      elo: num(cs2.faceit_elo),
-      level,
-      region: typeof region === 'string' ? region : null,
-      // Net ELO change across the recent window (sum of the recorded per-match
-      // changes, e.g. +140), 0 when none have been recorded yet. The widget shows this as the
-      // TOTAL-mode loss/gain; live-session mode replaces it client-side with the
-      // ELO gained/lost across the stream.
-      eloDiff,
-      // Lifetime aggregates (nulls when FACEIT doesn't expose the field).
-      winRate: stats.winRate,
-      kd: stats.kd,
-      adr: stats.adr,
-      hs: stats.hs,
-      // TOTAL win/loss over the last ~100 matches (the season-ish record).
-      wins: recent.wins,
-      losses: recent.losses,
-      // Challenger leaderboard position (the `#528` pill), else null.
-      position,
-      // Leaderboard position in the player's region (e.g. 222222 in NA) and
-      // among that region's players from their country (e.g. 6357 in Canada),
-      // for every level; null when FACEIT doesn't list them. The widget cycles
-      // the name through these after each refresh.
-      regionRank,
-      countryRank,
-      matches,
-    },
-    200,
-    cors,
+  const body = {
+    nickname: player.nickname ?? '',
+    playerId,
+    country,
+    avatarUrl: typeof player.avatar === 'string' ? player.avatar : '',
+    elo: num(cs2.faceit_elo),
+    level,
+    region: typeof region === 'string' ? region : null,
+    // Net ELO change across the recent window (sum of the recorded per-match
+    // changes, e.g. +140), 0 when none have been recorded yet. The widget shows this as the
+    // TOTAL-mode loss/gain; live-session mode replaces it client-side with the
+    // ELO gained/lost across the stream.
+    eloDiff,
+    // Lifetime aggregates (nulls when FACEIT doesn't expose the field).
+    winRate: stats.winRate,
+    kd: stats.kd,
+    adr: stats.adr,
+    hs: stats.hs,
+    // TOTAL win/loss over the last ~100 matches (the season-ish record).
+    wins: recent.wins,
+    losses: recent.losses,
+    // Challenger leaderboard position (the `#528` pill), else null.
+    position,
+    // Leaderboard position in the player's region (e.g. 222222 in NA) and
+    // among that region's players from their country (e.g. 6357 in Canada),
+    // for every level; null when FACEIT doesn't list them. The widget cycles
+    // the name through these after each refresh.
+    regionRank,
+    countryRank,
+    matches,
+  };
+  await saveLastGood(steam64, history, body);
+  return json(body, 200, cors);
+}
+
+// Last good profile per player, so a failed FACEIT call can still answer with
+// the card the player had a moment ago instead of a 502. A running overlay
+// already keeps its last card on a failed poll, but a freshly loaded one (an
+// OBS scene switch, a source refresh, the auto-reload onto a new build) has
+// nothing to keep and showed the error card. Kept in the edge cache for a day;
+// it is per data centre, which is where a player's overlay keeps landing.
+const LAST_GOOD_TTL = 86400;
+
+function lastGoodKey(steam64, history) {
+  return new Request(`https://faceit-proxy.internal/last-good/${steam64}/${history}`);
+}
+
+async function saveLastGood(steam64, history, body) {
+  try {
+    await caches.default.put(
+      lastGoodKey(steam64, history),
+      new Response(JSON.stringify(body), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${LAST_GOOD_TTL}` },
+      }),
+    );
+  } catch {
+    // Caching is best effort; the live answer still goes out.
+  }
+}
+
+// Answers a failed FACEIT lookup with the player's last good profile (marked
+// `stale`) when there is one, otherwise with the 502 the widget expects.
+async function staleOr(steam64, history, error, cors) {
+  try {
+    const hit = await caches.default.match(lastGoodKey(steam64, history));
+    if (hit) {
+      const body = await hit.json();
+      return json({ ...body, stale: true, staleReason: error }, 200, cors, true);
+    }
+  } catch {
+    // Fall through to the error.
+  }
+  return json({ error }, 502, cors);
+}
+
+// Logs what FACEIT actually said when it refuses a call (status, a slice of the
+// body, which Cloudflare data centre made the call), so the Worker's logs in
+// the Cloudflare dashboard show why the proxy answered 502. The widget only
+// ever sees the proxy's 502.
+async function logUpstreamFailure(call, res) {
+  let text = '';
+  try {
+    text = (await res.text()).slice(0, 300);
+  } catch {
+    // Body unreadable; the status is still worth logging.
+  }
+  console.warn(
+    JSON.stringify({
+      faceitFailure: call,
+      status: res.status,
+      body: text,
+      retryAfter: res.headers.get('retry-after'),
+      server: res.headers.get('server'),
+      cfRay: res.headers.get('cf-ray'),
+    }),
   );
 }
 
@@ -315,7 +383,10 @@ async function fetchRecentMatches(playerId, statsCount, auth) {
     // no matches made every stat, the W/L and the history strip blank out for
     // one poll and animate back in on the next. `failed` makes the profile
     // answer 502, so the widget keeps the card it has.
-    if (!res.ok) return { matches: [], wins: 0, losses: 0, ids: [], failed: res.status };
+    if (!res.ok) {
+      await logUpstreamFailure('match history', res);
+      return { matches: [], wins: 0, losses: 0, ids: [], failed: res.status };
+    }
     const data = await res.json();
     items = Array.isArray(data?.items) ? data.items : [];
   } catch {
@@ -522,7 +593,7 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function json(body, status, cors) {
+function json(body, status, cors, stale = false) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -531,7 +602,8 @@ function json(body, status, cors) {
       // widget polls on its own refresh interval), but never cache errors — a
       // cached 4xx/5xx with a long max-age would stick in the browser and keep
       // masking an already-fixed Worker or a transient FACEIT hiccup.
-      'Cache-Control': status === 200 ? 'public, max-age=30' : 'no-store',
+      // A stale fallback isn't cached either, so the next poll asks FACEIT again.
+      'Cache-Control': status === 200 && !stale ? 'public, max-age=30' : 'no-store',
       ...cors,
     },
   });
