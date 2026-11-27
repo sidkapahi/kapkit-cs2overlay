@@ -46,6 +46,10 @@ function isAllowedOrigin(origin) {
 
 const LEETIFY_BASE = 'https://api-public.cs-prod.leetify.com/v3/profile';
 
+// Per-try deadline and number of tries for the upstream call (see fetch below).
+const UPSTREAM_TIMEOUT_MS = 3000;
+const UPSTREAM_ATTEMPTS = 2;
+
 // Builds the CORS headers for a request. When the caller's Origin is on the
 // allowlist we echo it back (the CORS spec allows only one origin per response,
 // so it can't be a static list); otherwise no Allow-Origin is sent and the
@@ -90,10 +94,23 @@ export default {
     const headers = {};
     if (env.LEETIFY_KEY) headers._leetify_key = env.LEETIFY_KEY;
 
+    // Leetify's API sometimes hangs for ~30s and then 504s, while a fresh
+    // request answers in about a second. Give each try a short deadline and
+    // try twice, so a hang costs a few seconds instead of half a minute (and
+    // stays under the widget's own 7s per-attempt deadline).
     let upstream;
-    try {
-      upstream = await fetch(target, { headers });
-    } catch {
+    for (let attempt = 0; attempt < UPSTREAM_ATTEMPTS; attempt++) {
+      try {
+        upstream = await fetch(target, {
+          headers,
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        });
+        if (upstream.status < 500) break;
+      } catch {
+        upstream = undefined;
+      }
+    }
+    if (!upstream) {
       return json({ error: 'Failed to reach the Leetify API' }, 502, cors);
     }
 

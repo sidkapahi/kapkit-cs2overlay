@@ -129,11 +129,36 @@ export function errorDetail(e: unknown): string {
   return `${name ? name + ': ' : ''}${msg}`.slice(0, 140);
 }
 
+// Leetify's public API intermittently hangs: a request sits for ~30s and ends
+// in a 504, while the next one answers in about a second (seen on 2026-11-27,
+// roughly 1 in 6 requests). A single 15s attempt turned every one of those into
+// "Failed to reach the Leetify proxy", and the customizer preview never tried
+// again. So each attempt gets a short deadline and a hung or 5xx attempt is
+// retried straight away; a healthy answer takes ~1s, so 7s per try is ample.
+const LEETIFY_ATTEMPTS = 3;
+const LEETIFY_ATTEMPT_TIMEOUT_MS = 7000;
+
+async function fetchLeetify(url: string, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < LEETIFY_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, init, LEETIFY_ATTEMPT_TIMEOUT_MS);
+      // 5xx (the proxy's 502, or Leetify's 504) is the same hang seen through
+      // the proxy: worth another try. Anything else is a real answer.
+      if (res.status < 500 || attempt === LEETIFY_ATTEMPTS - 1) return res;
+      lastError = new Error(`API error: ${res.status}`);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
+}
+
 export async function fetchPremierData(steamId: string): Promise<PremierData> {
   const { url, init } = leetifyRequest('profile', steamId);
   let res: Response;
   try {
-    res = await fetchWithTimeout(url, init);
+    res = await fetchLeetify(url, init);
   } catch {
     // A fetch that never got an HTTP response — the host was unreachable, or the
     // request stalled on a dead socket and hit our timeout. Word it after what
@@ -216,7 +241,7 @@ async function enrichWithKills(
 ): Promise<void> {
   try {
     const { url, init } = leetifyRequest('matches', steamId);
-    const res = await fetchWithTimeout(url, init);
+    const res = await fetchLeetify(url, init);
     if (!res.ok) return;
     const details = (await res.json()) as LeetifyMatchDetails[];
 
