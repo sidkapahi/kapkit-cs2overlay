@@ -66,8 +66,49 @@ function corsHeaders(request) {
   return headers;
 }
 
+// Fallback copies of the last good answer per player and endpoint, served when
+// Leetify hangs or errors on every try, so the card shows slightly older stats
+// instead of an error. Two layers:
+//   • memory: this Worker instance's own copy. No setup, but an instance can be
+//     restarted at any time, which empties it.
+//   • KV (optional): bind a KV namespace as LEETIFY_CACHE and copies survive
+//     restarts for a day. Writes are spaced out (one per player and endpoint
+//     every KV_WRITE_EVERY_MS per instance) to stay inside KV's free write quota.
+// The Cache API would be the obvious tool, but it does nothing on workers.dev.
+const memoryCopies = new Map(); // key -> { body, savedAt, kvWrittenAt }
+const MEMORY_MAX_ENTRIES = 500;
+const KV_TTL_SECONDS = 24 * 60 * 60;
+const KV_WRITE_EVERY_MS = 30 * 60 * 1000;
+
+function saveCopy(env, ctx, key, body) {
+  const now = Date.now();
+  const prev = memoryCopies.get(key);
+  const kvDue = env.LEETIFY_CACHE && (!prev || now - (prev.kvWrittenAt || 0) > KV_WRITE_EVERY_MS);
+  memoryCopies.delete(key); // re-insert so the Map's order is least recently saved first
+  memoryCopies.set(key, { body, savedAt: now, kvWrittenAt: kvDue ? now : prev?.kvWrittenAt || 0 });
+  if (memoryCopies.size > MEMORY_MAX_ENTRIES) {
+    memoryCopies.delete(memoryCopies.keys().next().value);
+  }
+  if (kvDue) {
+    ctx.waitUntil(
+      env.LEETIFY_CACHE.put(key, body, { expirationTtl: KV_TTL_SECONDS }).catch(() => {}),
+    );
+  }
+}
+
+async function loadCopy(env, key) {
+  const mem = memoryCopies.get(key);
+  if (mem) return mem.body;
+  if (!env.LEETIFY_CACHE) return null;
+  try {
+    return await env.LEETIFY_CACHE.get(key);
+  } catch {
+    return null;
+  }
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const cors = corsHeaders(request);
 
     if (request.method === 'OPTIONS') {
@@ -110,6 +151,22 @@ export default {
         upstream = undefined;
       }
     }
+    const copyKey = `${wantMatches ? 'matches' : 'profile'}:${steam64}`;
+    if (!upstream || upstream.status >= 500) {
+      // Leetify is down or hanging: answer with the last good copy if we have one.
+      const copy = await loadCopy(env, copyKey);
+      if (copy) {
+        return new Response(copy, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'X-Leetify-Fallback': '1',
+            ...cors,
+          },
+        });
+      }
+    }
     if (!upstream) {
       return json({ error: 'Failed to reach the Leetify API' }, 502, cors);
     }
@@ -120,6 +177,7 @@ export default {
     // while never caching errors — a cached 4xx/5xx would stick in the browser
     // and keep masking an already-recovered API.
     const body = await upstream.text();
+    if (upstream.ok) saveCopy(env, ctx, copyKey, body);
     return new Response(body, {
       status: upstream.status,
       headers: {
