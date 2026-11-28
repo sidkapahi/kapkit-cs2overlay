@@ -92,6 +92,9 @@ export interface PremierData {
 // means Leetify is down or throttling us (a real problem), while `no_premier`
 // is just a visitor without Premier data (not a bug). Kept next to the code
 // that throws these messages so the two stay in sync.
+export const NO_LEETIFY_PROFILE =
+  'No Leetify profile for this account. Sign in at leetify.com with Steam to create one.';
+
 export function classifyFetchError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   const api = /API error:\s*(\d+)/i.exec(msg);
@@ -102,6 +105,7 @@ export function classifyFetchError(e: unknown): string {
     if (status === 404) return 'api_404';
     return `api_${status}`;
   }
+  if (msg === NO_LEETIFY_PROFILE) return 'api_404';
   if (/No Premier rank/i.test(msg)) return 'no_premier';
   if (/recognise that custom URL|recognize that custom URL/i.test(msg)) return 'vanity_not_found';
   if (/reach the Steam resolver|resolve custom URL|need the Steam proxy/i.test(msg)) return 'resolver_error';
@@ -166,6 +170,10 @@ export async function fetchPremierData(steamId: string): Promise<PremierData> {
     // classifyFetchError maps both phrasings to `network_error`.
     throw new Error(LEETIFY_PROXY ? 'Failed to reach the Leetify proxy' : 'Failed to fetch');
   }
+  // Leetify answers 404 for a Steam account it has never seen: the player has
+  // never signed in to leetify.com, so it has no Premier data to show. Say so
+  // instead of a bare "API error: 404" (analytics still files it as api_404).
+  if (res.status === 404) throw new Error(NO_LEETIFY_PROFILE);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
 
   const data: LeetifyProfile = await res.json();
