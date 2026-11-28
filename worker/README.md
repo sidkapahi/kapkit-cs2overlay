@@ -100,6 +100,22 @@ tooling but a browser blocks — so Premier mode shows "Failed to fetch".
    *variable* is fine. When the proxy is used the API key lives **only on the
    Worker**, never in the browser bundle.
 
+5. **(Optional) keep fallback copies in KV.** Leetify's API sometimes hangs.
+   The proxy retries, and if every try fails it answers with the last good copy
+   of that player's data instead of an error. Copies live in the Worker's memory
+   with no setup, but memory is emptied whenever Cloudflare restarts the Worker.
+   To keep copies for a day across restarts:
+   1. Cloudflare dashboard → **Storage & Databases** → **Workers KV** →
+      **Create instance**, name it `leetify-cache`, and copy its **ID**.
+   2. GitHub → the repo → **Settings** → **Secrets and variables** →
+      **Actions** → **Variables** tab → **New repository variable** named
+      `LEETIFY_CACHE_KV_ID` with that ID.
+   3. GitHub → **Actions** → **Deploy proxy Workers** → **Run workflow**. The
+      deploy binds the namespace to the Worker as `LEETIFY_CACHE`.
+
+   Don't add the binding in the dashboard instead: the next deploy from GitHub
+   replaces the Worker's bindings with what the config says and would remove it.
+
 # FACEIT proxy (Cloudflare Worker)
 
 Powers the widget's **FACEIT mode** (the `PREMIER | FACEIT` toggle in the

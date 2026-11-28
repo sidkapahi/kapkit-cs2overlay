@@ -42,8 +42,15 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
+          # Optional: ID of a KV namespace the Leetify proxy keeps fallback
+          # copies in (see worker/README.md). Kept as a repository variable so
+          # the ID isn't committed; without it the proxy uses memory only.
+          LEETIFY_CACHE_KV_ID: ${{ vars.LEETIFY_CACHE_KV_ID }}
         run: |
           set -euo pipefail
+          if [ -n "${LEETIFY_CACHE_KV_ID:-}" ]; then
+            printf '\n[[kv_namespaces]]\nbinding = "LEETIFY_CACHE"\nid = "%s"\n' "$LEETIFY_CACHE_KV_ID" >> wrangler.leetify.toml
+          fi
           # Deploy everything on a manual run, or when there's no usable
           # previous commit to diff against (first push, force-push).
           deploy_all=false
